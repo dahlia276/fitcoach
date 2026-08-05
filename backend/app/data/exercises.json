@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Barbell Bench Press",
+    "muscle_groups": ["Chest", "Triceps", "Front Delts"],
+    "equipment": "Barbell",
+    "difficulty": "Intermediate",
+    "substitutions": [
+      "Dumbbell Bench Press",
+      "Push-ups"
+    ]
+  },
+  {
+    "name": "Back Squat",
+    "muscle_groups": ["Quads", "Glutes"],
+    "equipment": "Barbell",
+    "difficulty": "Intermediate",
+    "substitutions": [
+      "Goblet Squat",
+      "Leg Press"
+    ]
+  }
+]
