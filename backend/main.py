@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from app.db import supabase
 from pydantic import BaseModel
-from app.ai.llm import llm
-from app.ai.prompts import SYSTEM_PROMPT
+from app.ai.planner import generate_plan
+from app.services.user_service import create_user, save_plan
 
 app = FastAPI()
 
 
 class Onboard(BaseModel):
+    name: str
     age: int
     weight: float
     goal: str
@@ -23,22 +24,30 @@ def root():
 def users():
     return supabase.table("users").select("*").execute().data
 
-@app.post("/generate-plan")
-def generate_plan(data: Onboard):
+@app.post("/onboard")
+def onboard(data: Onboard):
 
-    prompt = f"""
-{SYSTEM_PROMPT}
+    user = create_user(data.model_dump())
 
-Age: {data.age}
-Weight: {data.weight}
-Goal: {data.goal}
-Experience: {data.experience}
-Equipment: {data.equipment}
-Injuries: {data.injuries}
-"""
+    plan = generate_plan(user)
 
-    response = llm.invoke(prompt)
+    save_plan(user["id"], plan)
 
     return {
-        "plan": response.content
+        "user_id": user["id"],
+        "plan": plan
     }
+    
+@app.get("/plan/{user_id}")
+def get_plan(user_id: str):
+
+    plan = (
+        supabase
+        .table("workout_plans")
+        .select("*")
+        .eq("user_id", user_id)
+        .execute()
+        .data
+    )
+
+    return plan
