@@ -77,14 +77,15 @@ Prioritize effective compound movements and balanced exercise selection.
     search_kwargs = {
         "query": query,
         "k": 50,
+        "fetch_k": 80,
+        "lambda_mult": 0.7,
     }
 
     if equipment in strict_equipment:
         search_kwargs["filter"] = {"equipment": profile.equipment}
 
-    results = vectorstore.similarity_search(**search_kwargs)
+    results = vectorstore.max_marginal_relevance_search(**search_kwargs)
 
-    # Remove duplicate exercises while preserving similarity ranking.
     seen_ids = set()
     docs = []
 
@@ -111,6 +112,11 @@ Prioritize effective compound movements and balanced exercise selection.
         f"""
 Exercise ID: {d.metadata["id"]}
 Exercise Name: {d.metadata["name"]}
+Primary Muscles: {d.metadata.get("primary_muscles", "")}
+Secondary Muscles: {d.metadata.get("secondary_muscles", "")}
+Category: {d.metadata.get("category", "")}
+Mechanic: {d.metadata.get("mechanic", "")}
+Force: {d.metadata.get("force", "")}
 Equipment: {d.metadata.get("equipment", "")}
 Level: {d.metadata.get("level", "")}
 
