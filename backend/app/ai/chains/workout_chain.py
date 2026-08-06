@@ -50,15 +50,30 @@ def generate_program(profile: TrainingProfile):
     {profile.injuries}
     """
 
-    results = vectorstore.similarity_search(
-    query=query,
-    k=25,
-    filter={
-        "equipment": profile.equipment
-    }
-)
+    equipment = (profile.equipment or "").strip().lower()
 
-    docs = results
+    strict_equipment = {
+        "barbell",
+        "dumbbell",
+        "kettlebell",
+        "cable",
+        "machine",
+        "bands",
+        "medicine ball",
+        "exercise ball",
+        "ez curl bar",
+        "body only",
+    }
+
+    search_kwargs = {
+        "query": query,
+        "k": 25,
+    }
+
+    if equipment in strict_equipment:
+        search_kwargs["filter"] = {"equipment": profile.equipment}
+
+    docs = vectorstore.similarity_search(**search_kwargs)
 
     print("\nRetrieved exercises:")
     print("=" * 40)
@@ -66,19 +81,19 @@ def generate_program(profile: TrainingProfile):
     for d in docs:
         print(
             f"{d.metadata['name']} | "
-        f"{d.metadata.get('equipment')} | "
-        f"{d.metadata.get('category')}"
-    )
+            f"{d.metadata.get('equipment')} | "
+            f"{d.metadata.get('category')}"
+        )
 
     context = "\n\n".join(
         f"""
-    Exercise ID: {d.metadata["id"]}
-    Exercise Name: {d.metadata["name"]}
-    Equipment: {d.metadata.get("equipment","")}
-    Level: {d.metadata.get("level","")}
+Exercise ID: {d.metadata["id"]}
+Exercise Name: {d.metadata["name"]}
+Equipment: {d.metadata.get("equipment", "")}
+Level: {d.metadata.get("level", "")}
 
-    {d.page_content}
-    """
+{d.page_content}
+"""
         for d in docs
     )
 
