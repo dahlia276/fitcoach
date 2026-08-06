@@ -82,7 +82,20 @@ Prioritize effective compound movements and balanced exercise selection.
     if equipment in strict_equipment:
         search_kwargs["filter"] = {"equipment": profile.equipment}
 
-    docs = vectorstore.similarity_search(**search_kwargs)
+    results = vectorstore.similarity_search(**search_kwargs)
+
+    # Remove duplicate exercises while preserving similarity ranking.
+    seen_ids = set()
+    docs = []
+
+    for doc in results:
+        exercise_id = doc.metadata["id"]
+
+        if exercise_id in seen_ids:
+            continue
+
+        seen_ids.add(exercise_id)
+        docs.append(doc)
 
     print("\nRetrieved exercises:")
     print("=" * 40)
