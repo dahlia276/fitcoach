@@ -1,10 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.services.assessment_service import build_training_profile
 from app.db import supabase
 from pydantic import BaseModel
 from app.ai.planner import generate_plan
 from app.services.user_service import create_user, save_plan
+from app.services.exercise_service import load_exercises
+from app.models.workout import WorkoutLog
+from app.services.workout_service import (
+    log_workout,
+    get_workouts,
+)
 
 app = FastAPI()
 
@@ -43,14 +49,10 @@ def users():
 @app.post("/onboard")
 def onboard(data: Onboard):
     user = create_user(data.model_dump())
-
-    plan = generate_plan(user)
-
-    save_plan(user["id"], plan)
-
+    profile = build_training_profile(user)
     return {
         "user_id": user["id"],
-        "plan": plan,
+        "training_profile": profile.model_dump(),
     }
 
 
@@ -66,7 +68,6 @@ def get_plan(user_id: str):
 
     return plan
 
-from app.services.exercise_service import load_exercises
 
 @app.get("/exercises")
 def exercises():
@@ -87,11 +88,6 @@ def search(q: str):
         for d in docs
     ]
     
-from app.models.workout import WorkoutLog
-from app.services.workout_service import (
-    log_workout,
-    get_workouts,
-)
 
 @app.post("/log")
 def create_log(workout: WorkoutLog):
