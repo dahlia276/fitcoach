@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TrainingProfile(BaseModel):
@@ -6,9 +6,7 @@ class TrainingProfile(BaseModel):
     experience: str
     equipment: str
     injuries: str
-
-    training_days: int
-    session_minutes: int
-
+    training_days: int = Field(gt=0)
+    session_minutes: int = Field(gt=0)
     recommended_split: str
     reasoning: str
