@@ -29,11 +29,14 @@ app.add_middleware(
 class Onboard(BaseModel):
     name: str
     age: int
+    height: float
     weight: float
     goal: str
     experience: str
     equipment: str
     injuries: str
+    training_days: int | None = None
+    session_minutes: int | None = None
 
 
 @app.get("/")
@@ -50,9 +53,12 @@ def users():
 def onboard(data: Onboard):
     user = create_user(data.model_dump())
     profile = build_training_profile(user)
+    program = generate_plan(profile)
+    save_plan(user["id"], program)
     return {
         "user_id": user["id"],
         "training_profile": profile.model_dump(),
+        "program": program,
     }
 
 

@@ -3,9 +3,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from app.ai.llm import llm
 from app.ai.prompts import SYSTEM_PROMPT
 from app.ai.retriever import retriever
-from app.models.workout_plan import WorkoutPlan
 
-planner = llm.with_structured_output(WorkoutPlan)
+from app.models.training_profile import TrainingProfile
+from app.models.workout_program import WorkoutProgram
+
+planner = llm.with_structured_output(WorkoutProgram)
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -13,66 +15,68 @@ prompt = ChatPromptTemplate.from_messages(
         (
             "human",
             """
-User Profile
+Training Profile
 
-Goal: {goal}
-Experience: {experience}
-Equipment: {equipment}
-Injuries: {injuries}
+Goal:
+{goal}
 
-Available Exercises
+Split:
+{split}
+
+Training Days:
+{training_days}
+
+Equipment:
+{equipment}
+
+Injuries:
+{injuries}
+
+Exercise Library
 
 {context}
-
-Generate a personalized workout plan.
 """,
         ),
     ]
 )
 
 
-def generate(user):
+def generate_program(profile: TrainingProfile):
 
     query = " ".join(
-        filter(
-            None,
-            [
-                user["goal"],
-                user["experience"],
-                user["equipment"],
-                user["injuries"],
-            ],
-        )
+        [
+            profile.goal,
+            profile.recommended_split,
+            profile.equipment,
+            profile.injuries,
+        ]
     )
 
     docs = retriever.invoke(query)
 
-    print("\nRetrieved exercises:")
-    for doc in docs:
-        print(f"- {doc.metadata['name']} ({doc.metadata['id']})")
-
     context = "\n\n".join(
         f"""
-Exercise ID: {doc.metadata["id"]}
-Exercise Name: {doc.metadata["name"]}
-Equipment: {doc.metadata.get("equipment", "")}
-Level: {doc.metadata.get("level", "")}
+Exercise ID: {d.metadata["id"]}
+Exercise Name: {d.metadata["name"]}
+Equipment: {d.metadata.get("equipment","")}
+Level: {d.metadata.get("level","")}
 
-{doc.page_content}
+{d.page_content}
 """
-        for doc in docs
+        for d in docs
     )
 
     messages = prompt.invoke(
         {
-            "goal": user["goal"],
-            "experience": user["experience"],
-            "equipment": user["equipment"],
-            "injuries": user["injuries"],
+            "goal": profile.goal,
+            "split": profile.recommended_split,
+            "training_days": profile.training_days,
+            "equipment": profile.equipment,
+            "injuries": profile.injuries,
             "context": context,
         }
     )
 
-    plan = planner.invoke(messages)
+    program = planner.invoke(messages)
 
-    return plan.model_dump()
+    return program.model_dump()

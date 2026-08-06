@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 
-
 class Exercise(BaseModel):
     exercise_id: str
     exercise_name: str
@@ -9,11 +8,10 @@ class Exercise(BaseModel):
     rest_seconds: int
     notes: str
 
-
 class WorkoutDay(BaseModel):
-    day: str
+    name: str
+    focus: str
     exercises: list[Exercise]
 
-
-class WorkoutPlan(BaseModel):
-    weeks: list[WorkoutDay]
+class WorkoutProgram(BaseModel):
+    days: list[WorkoutDay]
