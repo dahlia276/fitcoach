@@ -4,11 +4,13 @@ from pydantic import BaseModel
 from app.ai.planner import generate_plan
 from app.ai.retriever import vectorstore
 from app.db import supabase
+from app.models.program_request import ProgramRequest
 from app.models.workout import WorkoutLog
 from app.services.assessment_service import build_training_profile
 from app.services.exercise_service import load_exercises
 from app.services.user_service import (
     create_user,
+    get_training_profile,
     save_plan,
     save_training_profile,
 )
@@ -79,11 +81,19 @@ def onboard(data: Onboard):
     )
 
     save_training_profile(user["id"], profile)
-    program = generate_plan(profile)
-    save_plan(user["id"], program)
+
     return {
         "user_id": user["id"],
         "training_profile": profile.model_dump(),
+    }
+
+
+@app.post("/program")
+def generate_program(request: ProgramRequest):
+    profile = get_training_profile(request.user_id)
+    program = generate_plan(profile)
+    save_plan(request.user_id, program)
+    return {
         "program": program,
     }
 
