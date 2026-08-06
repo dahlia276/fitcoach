@@ -1,13 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
 from app.db import supabase
 from app.ai.planner import generate_plan
-from app.ai.retriever import retriever
-
+from app.ai.retriever import vectorstore
 from app.models.workout import WorkoutLog
-
 from app.services.assessment_service import build_training_profile
 from app.services.exercise_service import load_exercises
 from app.services.user_service import create_user, save_plan
@@ -112,7 +109,7 @@ def exercises():
 @app.get("/search")
 def search(q: str):
 
-    docs = retriever.invoke(q)
+    docs = vectorstore.similarity_search(q, k=10)
 
     return [
         {

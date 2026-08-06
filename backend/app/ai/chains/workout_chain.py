@@ -1,9 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
-
 from app.ai.llm import llm
 from app.ai.prompts import SYSTEM_PROMPT
-from app.ai.retriever import retriever
-
+from app.ai.retriever import vectorstore
 from app.models.training_profile import TrainingProfile
 from app.models.workout_program import WorkoutProgram
 
@@ -44,23 +42,43 @@ Exercise Library
 def generate_program(profile: TrainingProfile):
 
     query = f"""
+    Build a {profile.recommended_split} workout.
     Goal: {profile.goal}
-    Split: {profile.recommended_split}
-    Equipment: {profile.equipment}
-    Injuries: {profile.injuries}
+    Primary equipment:
+    {profile.equipment}
+    Avoid exercises unsuitable for:
+    {profile.injuries}
     """
 
-    docs = retriever.invoke(query)
+    results = vectorstore.similarity_search(
+    query=query,
+    k=25,
+    filter={
+        "equipment": profile.equipment
+    }
+)
+
+    docs = results
+
+    print("\nRetrieved exercises:")
+    print("=" * 40)
+
+    for d in docs:
+        print(
+            f"{d.metadata['name']} | "
+        f"{d.metadata.get('equipment')} | "
+        f"{d.metadata.get('category')}"
+    )
 
     context = "\n\n".join(
         f"""
-Exercise ID: {d.metadata["id"]}
-Exercise Name: {d.metadata["name"]}
-Equipment: {d.metadata.get("equipment","")}
-Level: {d.metadata.get("level","")}
+    Exercise ID: {d.metadata["id"]}
+    Exercise Name: {d.metadata["name"]}
+    Equipment: {d.metadata.get("equipment","")}
+    Level: {d.metadata.get("level","")}
 
-{d.page_content}
-"""
+    {d.page_content}
+    """
         for d in docs
     )
 

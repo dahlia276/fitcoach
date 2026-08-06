@@ -10,7 +10,3 @@ vectorstore = Chroma(
     embedding_function=embeddings,
     persist_directory="./chroma",
 )
-
-retriever = vectorstore.as_retriever(
-    search_kwargs={"k": 20}
-)
