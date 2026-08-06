@@ -71,3 +71,18 @@ from app.services.exercise_service import load_exercises
 @app.get("/exercises")
 def exercises():
     return load_exercises()
+
+from app.ai.retriever import retriever
+
+@app.get("/search")
+def search(q: str):
+
+    docs = retriever.invoke(q)
+
+    return [
+        {
+            "name": d.metadata["name"],
+            "content": d.page_content,
+        }
+        for d in docs
+    ]
