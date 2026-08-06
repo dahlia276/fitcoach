@@ -86,3 +86,18 @@ def search(q: str):
         }
         for d in docs
     ]
+    
+from app.models.workout import WorkoutLog
+from app.services.workout_service import (
+    log_workout,
+    get_workouts,
+)
+
+@app.post("/log")
+def create_log(workout: WorkoutLog):
+    return log_workout(workout.model_dump())
+
+
+@app.get("/logs/{user_id}")
+def logs(user_id: str):
+    return get_workouts(user_id)

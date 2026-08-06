@@ -14,6 +14,15 @@ vectorstore = Chroma(
     persist_directory="./chroma",
 )
 
+# Remove old vectors before rebuilding
+vectorstore.delete_collection()
+
+vectorstore = Chroma(
+    collection_name="exercise_library",
+    embedding_function=embedding_model,
+    persist_directory="./chroma",
+)
+
 rows = (
     supabase
     .table("exercise_library")
@@ -26,17 +35,18 @@ documents = []
 
 for row in rows:
 
-    doc = Document(
-        page_content=row["search_text"],
-        metadata={
-            "id": row["id"],
-            "name": row["name"],
-            "equipment": row["equipment"],
-            "category": row["category"],
-        },
+    documents.append(
+        Document(
+            page_content=row["search_text"],
+            metadata={
+                "id": row["id"],
+                "name": row["name"],
+                "equipment": row["equipment"],
+                "level": row["level"],
+                "category": row["category"],
+            },
+        )
     )
-
-    documents.append(doc)
 
 vectorstore.add_documents(documents)
 

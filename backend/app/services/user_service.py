@@ -1,7 +1,7 @@
 from app.db import supabase
 
-def create_user(user):
 
+def create_user(user):
     return (
         supabase
         .table("users")
@@ -12,13 +12,14 @@ def create_user(user):
 
 
 def save_plan(user_id, plan):
-
     return (
         supabase
         .table("workout_plans")
-        .insert({
-            "user_id": user_id,
-            "plan": {"content": plan}
-        })
+        .insert(
+            {
+                "user_id": user_id,
+                "plan": plan,
+            }
+        )
         .execute()
     )
