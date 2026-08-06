@@ -42,13 +42,22 @@ Exercise Library
 def generate_program(profile: TrainingProfile):
 
     query = f"""
-    Build a {profile.recommended_split} workout.
-    Goal: {profile.goal}
-    Primary equipment:
-    {profile.equipment}
-    Avoid exercises unsuitable for:
-    {profile.injuries}
-    """
+Build a {profile.recommended_split} workout program.
+
+Training goal:
+{profile.goal}
+
+Experience level:
+{profile.experience}
+
+Available equipment:
+{profile.equipment}
+
+Avoid exercises unsuitable for:
+{profile.injuries}
+
+Prioritize effective compound movements and balanced exercise selection.
+"""
 
     equipment = (profile.equipment or "").strip().lower()
 
@@ -67,7 +76,7 @@ def generate_program(profile: TrainingProfile):
 
     search_kwargs = {
         "query": query,
-        "k": 25,
+        "k": 50,
     }
 
     if equipment in strict_equipment:
