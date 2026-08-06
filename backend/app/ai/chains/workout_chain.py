@@ -1,11 +1,13 @@
 from langchain_core.prompts import ChatPromptTemplate
 from app.ai.llm import llm
+from app.ai.program_validator import ProgramValidator
 from app.ai.prompts import SYSTEM_PROMPT
 from app.ai.retriever import vectorstore
 from app.models.training_profile import TrainingProfile
 from app.models.workout_program import WorkoutProgram
 
 planner = llm.with_structured_output(WorkoutProgram)
+validator = ProgramValidator()
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -137,5 +139,5 @@ Level: {d.metadata.get("level", "")}
     )
 
     program = planner.invoke(messages)
-
+    program = validator.validate(program, profile)
     return program.model_dump()
