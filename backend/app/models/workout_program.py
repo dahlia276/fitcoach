@@ -11,6 +11,7 @@ class Exercise(BaseModel):
 class WorkoutDay(BaseModel):
     name: str
     focus: str
+    estimated_duration_minutes: int
     exercises: list[Exercise]
 
 class WorkoutProgram(BaseModel):

@@ -43,14 +43,12 @@ Exercise Library
 
 def generate_program(profile: TrainingProfile):
 
-    query = " ".join(
-        [
-            profile.goal,
-            profile.recommended_split,
-            profile.equipment,
-            profile.injuries,
-        ]
-    )
+    query = f"""
+    Goal: {profile.goal}
+    Split: {profile.recommended_split}
+    Equipment: {profile.equipment}
+    Injuries: {profile.injuries}
+    """
 
     docs = retriever.invoke(query)
 

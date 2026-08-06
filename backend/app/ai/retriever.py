@@ -12,5 +12,5 @@ vectorstore = Chroma(
 )
 
 retriever = vectorstore.as_retriever(
-    search_kwargs={"k": 4}
+    search_kwargs={"k": 20}
 )

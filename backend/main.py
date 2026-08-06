@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.services.assessment_service import build_training_profile
-from app.db import supabase
 from pydantic import BaseModel
+
+from app.db import supabase
 from app.ai.planner import generate_plan
-from app.services.user_service import create_user, save_plan
-from app.services.exercise_service import load_exercises
+from app.ai.retriever import retriever
+
 from app.models.workout import WorkoutLog
+
+from app.services.assessment_service import build_training_profile
+from app.services.exercise_service import load_exercises
+from app.services.user_service import create_user, save_plan
 from app.services.workout_service import (
     log_workout,
     get_workouts,
@@ -51,10 +55,34 @@ def users():
 
 @app.post("/onboard")
 def onboard(data: Onboard):
-    user = create_user(data.model_dump())
-    profile = build_training_profile(user)
+
+    # Only fields that belong in the users table
+    user_data = {
+        "name": data.name,
+        "age": data.age,
+        "height": data.height,
+        "weight": data.weight,
+        "goal": data.goal,
+        "experience": data.experience,
+        "equipment": data.equipment,
+        "injuries": data.injuries,
+    }
+
+    user = create_user(user_data)
+
+    # Assessment receives the extra coaching preferences
+    profile = build_training_profile(
+        {
+            **user_data,
+            "training_days": data.training_days,
+            "session_minutes": data.session_minutes,
+        }
+    )
+
     program = generate_plan(profile)
+
     save_plan(user["id"], program)
+
     return {
         "user_id": user["id"],
         "training_profile": profile.model_dump(),
@@ -65,7 +93,8 @@ def onboard(data: Onboard):
 @app.get("/plan/{user_id}")
 def get_plan(user_id: str):
     plan = (
-        supabase.table("workout_plans")
+        supabase
+        .table("workout_plans")
         .select("*")
         .eq("user_id", user_id)
         .execute()
@@ -79,7 +108,6 @@ def get_plan(user_id: str):
 def exercises():
     return load_exercises()
 
-from app.ai.retriever import retriever
 
 @app.get("/search")
 def search(q: str):
@@ -93,7 +121,7 @@ def search(q: str):
         }
         for d in docs
     ]
-    
+
 
 @app.post("/log")
 def create_log(workout: WorkoutLog):
