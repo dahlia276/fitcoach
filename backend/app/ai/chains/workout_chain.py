@@ -10,7 +10,7 @@ prompt = ChatPromptTemplate.from_messages(
         (
             "human",
             """
-User
+User:
 
 Goal: {goal}
 
@@ -24,7 +24,7 @@ Relevant exercises:
 
 {context}
 
-Generate the workout.
+Generate a structured 4-week workout plan.
 """,
         ),
     ]
@@ -35,24 +35,17 @@ def generate(user):
 
     docs = retriever.invoke(
         f"""
-Goal: {user["goal"]}
-
-Equipment:
-{user["equipment"]}
-
-Injuries:
-{user["injuries"]}
+Goal: {user['goal']}
+Equipment: {user['equipment']}
+Injuries: {user['injuries']}
 """
     )
 
     context = "\n\n".join(
-        d.page_content
-        for d in docs
+        doc.page_content for doc in docs
     )
 
-    chain = prompt | llm
-
-    response = chain.invoke(
+    messages = prompt.invoke(
         {
             "goal": user["goal"],
             "experience": user["experience"],
@@ -62,5 +55,6 @@ Injuries:
         }
     )
 
-    return response.content
+    response = llm.invoke(messages)
 
+    return response.content
