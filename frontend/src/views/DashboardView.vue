@@ -1,0 +1,9 @@
+<script setup lang="ts">
+import { computed } from "vue";
+import { CalendarCheck, Flame, Target, TrendingUp } from "@lucide/vue";
+import { useFitnessStore } from "../stores/fitness";
+const fitness = useFitnessStore();
+const name = computed(() => fitness.profile ? "there" : "there");
+</script>
+
+<template><main class="mx-auto max-w-6xl px-6 py-12 lg:px-10"><p class="text-sm font-semibold text-blue-600">Dashboard</p><h1 class="mt-1 text-3xl font-semibold tracking-tight">Good to see you, {{ name }}.</h1><p class="mt-3 text-slate-500">Small sessions add up. Here’s your training snapshot.</p><section class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><div class="stat-card"><CalendarCheck class="text-blue-600" :size="20" /><p>Sessions this week</p><strong>0 <span>/ {{ fitness.program?.days.length ?? 0 }}</span></strong></div><div class="stat-card"><Flame class="text-orange-500" :size="20" /><p>Current streak</p><strong>0 <span>days</span></strong></div><div class="stat-card"><TrendingUp class="text-emerald-600" :size="20" /><p>Completion rate</p><strong>—</strong></div><div class="stat-card"><Target class="text-violet-600" :size="20" /><p>Primary goal</p><strong class="text-lg">{{ fitness.profile?.goal ?? "Set a goal" }}</strong></div></section><section class="mt-8 rounded-3xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold">This week</h2><p class="mt-1 text-sm text-slate-500">Your completed workouts will appear here once you finish your first session.</p><div class="mt-8 flex h-24 items-end justify-between gap-2"><div v-for="day in ['M', 'T', 'W', 'T', 'F', 'S', 'S']" :key="day" class="flex flex-1 flex-col items-center gap-2"><div class="h-12 w-full max-w-10 rounded-t-lg bg-slate-100" /><span class="text-xs text-slate-400">{{ day }}</span></div></div></section></main></template>

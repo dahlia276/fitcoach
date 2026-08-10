@@ -1,0 +1,8 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import { Send, Sparkles } from "@lucide/vue";
+const message = ref("");
+const messages = ref([{ role: "coach", content: "Hi! I’m your FitCoach. Ask me about your program, exercise form, or how to adjust a workout." }]);
+const send = () => { if (!message.value.trim()) return; messages.value.push({ role: "user", content: message.value.trim() }); message.value = ""; };
+</script>
+<template><main class="mx-auto flex min-h-[calc(100vh-65px)] max-w-3xl flex-col px-6 py-10"><div><p class="text-sm font-semibold text-blue-600">FitCoach AI</p><h1 class="mt-1 text-3xl font-semibold tracking-tight">Your training companion.</h1></div><section class="mt-8 flex flex-1 flex-col rounded-3xl border bg-white shadow-sm"><div class="flex-1 space-y-4 p-6"><div v-for="(item, index) in messages" :key="index" class="flex" :class="item.role === 'user' ? 'justify-end' : 'justify-start'"><div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6" :class="item.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'"><Sparkles v-if="item.role === 'coach'" :size="14" class="mb-1 text-blue-600" />{{ item.content }}</div></div></div><form class="border-t p-4" @submit.prevent="send"><div class="flex items-center gap-2 rounded-xl border border-slate-200 p-1.5 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10"><input v-model="message" class="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm outline-none" placeholder="Ask your coach anything..." /><button class="grid size-9 place-items-center rounded-lg bg-blue-600 text-white" aria-label="Send message"><Send :size="16" /></button></div></form></section></main></template>
