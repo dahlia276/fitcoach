@@ -6,27 +6,21 @@ def create_user(user):
     return (
         supabase
         .table("users")
-        .insert(user)
+        .upsert(user, on_conflict="id")
         .execute()
         .data[0]
     )
 
 
 def save_training_profile(user_id, profile):
-    return (
-        supabase
-        .table("training_profiles")
-        .insert(
-            {
-                "user_id": user_id,
-                **profile.model_dump(),
-            }
-        )
-        .execute()
-    )
+    payload = profile.model_dump()
+    existing = supabase.table("training_profiles").select("id").eq("user_id", user_id).limit(1).execute().data
+    if existing:
+        return supabase.table("training_profiles").update(payload).eq("id", existing[0]["id"]).execute()
+    return supabase.table("training_profiles").insert({"user_id": user_id, **payload}).execute()
 
 
-def get_training_profile(user_id) -> TrainingProfile:
+def get_training_profile(user_id) -> TrainingProfile | None:
     result = (
         supabase
         .table("training_profiles")
@@ -37,6 +31,8 @@ def get_training_profile(user_id) -> TrainingProfile:
         .execute()
     )
 
+    if not result.data:
+        return None
     profile = result.data[0]
     profile.pop("id", None)
     profile.pop("user_id", None)
@@ -56,3 +52,11 @@ def save_plan(user_id, plan):
         )
         .execute()
     )
+
+
+def get_latest_plan(user_id):
+    result = (
+        supabase.table("workout_plans").select("plan, created_at").eq("user_id", user_id)
+        .order("created_at", desc=True).limit(1).execute()
+    )
+    return result.data[0] if result.data else None

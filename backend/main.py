@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.ai.planner import generate_plan
@@ -10,10 +10,12 @@ from app.services.assessment_service import build_training_profile
 from app.services.exercise_service import load_exercises
 from app.services.user_service import (
     create_user,
+    get_latest_plan,
     get_training_profile,
     save_plan,
     save_training_profile,
 )
+from app.auth import get_current_user_id
 from app.services.workout_service import (
     get_workouts,
     log_workout,
@@ -51,13 +53,8 @@ def root():
     return {"status": "ok"}
 
 
-@app.get("/users")
-def users():
-    return supabase.table("users").select("*").execute().data
-
-
 @app.post("/onboard")
-def onboard(data: Onboard):
+def onboard(data: Onboard, user_id: str = Depends(get_current_user_id)):
 
     user_data = {
         "name": data.name,
@@ -70,7 +67,17 @@ def onboard(data: Onboard):
         "injuries": data.injuries,
     }
 
-    user = create_user(user_data)
+    create_user({
+        "id": user_id,
+        "name": data.name,
+        "age": data.age,
+        "height": data.height,
+        "weight": data.weight,
+        "goal": data.goal,
+        "experience": data.experience,
+        "equipment": data.equipment,
+        "injuries": data.injuries,
+    })
 
     profile = build_training_profile(
         {
@@ -80,34 +87,34 @@ def onboard(data: Onboard):
         }
     )
 
-    save_training_profile(user["id"], profile)
+    save_training_profile(user_id, profile)
 
     return {
-        "user_id": user["id"],
         "training_profile": profile.model_dump(),
     }
 
 
 @app.post("/program")
-def generate_program(request: ProgramRequest):
-    profile = get_training_profile(request.user_id)
+def generate_program(user_id: str = Depends(get_current_user_id)):
+    profile = get_training_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Complete onboarding before generating a program.")
     program = generate_plan(profile)
-    save_plan(request.user_id, program)
+    save_plan(user_id, program)
     return {
         "program": program,
     }
 
 
-@app.get("/plan/{user_id}")
-def get_plan(user_id: str):
-    plan = (
-        supabase.table("workout_plans")
-        .select("*")
-        .eq("user_id", user_id)
-        .execute()
-        .data
-    )
-    return plan
+@app.get("/profile/me")
+def get_profile(user_id: str = Depends(get_current_user_id)):
+    profile = get_training_profile(user_id)
+    return {"profile": profile.model_dump() if profile else None}
+
+
+@app.get("/plan")
+def get_plan(user_id: str = Depends(get_current_user_id)):
+    return get_latest_plan(user_id)
 
 
 @app.get("/exercises")
@@ -128,10 +135,10 @@ def search(q: str):
 
 
 @app.post("/log")
-def create_log(workout: WorkoutLog):
-    return log_workout(workout.model_dump())
+def create_log(workout: WorkoutLog, user_id: str = Depends(get_current_user_id)):
+    return log_workout({**workout.model_dump(), "user_id": user_id})
 
 
-@app.get("/logs/{user_id}")
-def logs(user_id: str):
+@app.get("/logs")
+def logs(user_id: str = Depends(get_current_user_id)):
     return get_workouts(user_id)
