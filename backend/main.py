@@ -11,6 +11,7 @@ from app.services.exercise_service import load_exercises
 from app.services.user_service import (
     create_user,
     get_latest_plan,
+    get_user,
     get_training_profile,
     save_plan,
     save_training_profile,
@@ -109,7 +110,7 @@ def generate_program(user_id: str = Depends(get_current_user_id)):
 @app.get("/profile/me")
 def get_profile(user_id: str = Depends(get_current_user_id)):
     profile = get_training_profile(user_id)
-    return {"profile": profile.model_dump() if profile else None}
+    return {"profile": profile.model_dump() if profile else None, "account": get_user(user_id)}
 
 
 @app.get("/plan")

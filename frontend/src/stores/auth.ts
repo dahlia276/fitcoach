@@ -5,9 +5,21 @@ import api from "../api/api";
 import { isSupabaseConfigured, supabase, supabaseConfigError } from "../lib/supabase";
 import type { TrainingProfile } from "./fitness";
 
+export interface AccountDetails {
+  name: string;
+  age: number;
+  height: number;
+  weight: number;
+  goal: string;
+  experience: string;
+  equipment: string;
+  injuries: string;
+}
+
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<User | null>(null);
   const trainingProfile = ref<TrainingProfile | null>(null);
+  const account = ref<AccountDetails | null>(null);
   const isReady = ref(false);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -15,9 +27,12 @@ export const useAuthStore = defineStore("auth", () => {
   const hasProfile = computed(() => Boolean(trainingProfile.value));
 
   async function loadAccount() {
-    if (!user.value) { trainingProfile.value = null; return; }
-    try { trainingProfile.value = (await api.get<{ profile: TrainingProfile | null }>("/profile/me")).data.profile; }
-    catch { trainingProfile.value = null; }
+    if (!user.value) { trainingProfile.value = null; account.value = null; return; }
+    try {
+      const { data } = await api.get<{ profile: TrainingProfile | null; account: AccountDetails | null }>("/profile/me");
+      trainingProfile.value = data.profile;
+      account.value = data.account;
+    } catch { trainingProfile.value = null; account.value = null; }
   }
 
   async function initialize() {
@@ -51,6 +66,6 @@ export const useAuthStore = defineStore("auth", () => {
     finally { isLoading.value = false; }
   }
 
-  async function signOut() { await supabase?.auth.signOut(); user.value = null; trainingProfile.value = null; }
-  return { user, trainingProfile, isReady, isLoading, error, isAuthenticated, hasProfile, isSupabaseConfigured, supabaseConfigError, initialize, loadAccount, signIn, signUp, signOut };
+  async function signOut() { await supabase?.auth.signOut(); user.value = null; trainingProfile.value = null; account.value = null; }
+  return { user, trainingProfile, account, isReady, isLoading, error, isAuthenticated, hasProfile, isSupabaseConfigured, supabaseConfigError, initialize, loadAccount, signIn, signUp, signOut };
 });

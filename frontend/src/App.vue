@@ -5,7 +5,7 @@ import { Activity, MessageCircle, LayoutDashboard } from "@lucide/vue";
 import "./assets/main.css";
 
 const route = useRoute();
-const showNavigation = computed(() => !["home", "login", "onboarding", "recommendation", "profile"].includes(String(route.name)));
+const showNavigation = computed(() => !["home", "login", "onboarding", "recommendation"].includes(String(route.name)));
 </script>
 
 <template>

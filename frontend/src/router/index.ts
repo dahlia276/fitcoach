@@ -6,6 +6,7 @@ import WorkoutView from "../views/WorkoutView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import CoachView from "../views/CoachView.vue";
 import LoginView from "../views/LoginView.vue";
+import ProfileView from "../views/ProfileView.vue";
 import { useAuthStore } from "../stores/auth";
 
 const router = createRouter({
@@ -18,7 +19,7 @@ const router = createRouter({
     },
     { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
     { path: "/onboarding", name: "onboarding", component: HomeView, meta: { requiresAuth: true, requiresProfile: false } },
-    { path: "/profile", name: "profile", component: HomeView, meta: { requiresAuth: true } },
+    { path: "/profile", name: "profile", component: ProfileView, meta: { requiresAuth: true, requiresProfile: true } },
     { path: "/recommendation", name: "recommendation", component: RecommendationView, meta: { requiresAuth: true, requiresProfile: true } },
     { path: "/program", name: "program", component: ProgramView, meta: { requiresAuth: true, requiresProfile: true } },
     { path: "/workout", name: "workout", component: WorkoutView, meta: { requiresAuth: true, requiresProfile: true } },

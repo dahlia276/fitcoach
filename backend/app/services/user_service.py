@@ -12,6 +12,17 @@ def create_user(user):
     )
 
 
+def get_user(user_id):
+    result = (
+        supabase.table("users")
+        .select("name, age, height, weight, goal, experience, equipment, injuries")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 def save_training_profile(user_id, profile):
     payload = profile.model_dump()
     existing = supabase.table("training_profiles").select("id").eq("user_id", user_id).limit(1).execute().data
