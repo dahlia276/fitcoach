@@ -1,29 +1,10 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
+import "./assets/main.css";
 </script>
 
 <template>
-  <RouterView />
+  <div class="min-h-screen bg-slate-50">
+    <RouterView />
+  </div>
 </template>
-
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: Inter, Arial, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
-}
-
-button {
-  font: inherit;
-}
-
-input {
-  font: inherit;
-}
-</style>
