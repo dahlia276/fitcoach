@@ -5,7 +5,7 @@ import { Activity, MessageCircle, LayoutDashboard } from "@lucide/vue";
 import "./assets/main.css";
 
 const route = useRoute();
-const showNavigation = computed(() => route.name !== "home");
+const showNavigation = computed(() => !["home", "login", "onboarding", "recommendation", "profile"].includes(String(route.name)));
 </script>
 
 <template>
@@ -14,7 +14,7 @@ const showNavigation = computed(() => route.name !== "home");
       <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-10">
         <RouterLink class="flex items-center gap-2 font-semibold tracking-tight" to="/"><span class="grid size-8 place-items-center rounded-lg bg-blue-600 text-white"><Activity :size="18" /></span>FitCoach</RouterLink>
         <div class="flex items-center gap-1 text-sm font-medium text-slate-500">
-          <RouterLink class="nav-link" to="/program">Program</RouterLink><RouterLink class="nav-link" to="/dashboard"><LayoutDashboard :size="16" />Dashboard</RouterLink><RouterLink class="nav-link" to="/coach"><MessageCircle :size="16" />Coach</RouterLink>
+          <RouterLink class="nav-link" to="/program">Program</RouterLink><RouterLink class="nav-link" to="/dashboard"><LayoutDashboard :size="16" />Dashboard</RouterLink><RouterLink class="nav-link" to="/coach"><MessageCircle :size="16" />Coach</RouterLink><RouterLink class="nav-link" to="/profile">Profile</RouterLink>
         </div>
       </nav>
     </header>

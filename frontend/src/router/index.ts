@@ -5,6 +5,8 @@ import ProgramView from "../views/ProgramView.vue";
 import WorkoutView from "../views/WorkoutView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import CoachView from "../views/CoachView.vue";
+import LoginView from "../views/LoginView.vue";
+import { useAuthStore } from "../stores/auth";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,14 +14,27 @@ const router = createRouter({
     {
       path: "/",
       name: "home",
-      component: HomeView,
+      redirect: "/dashboard",
     },
-    { path: "/recommendation", name: "recommendation", component: RecommendationView },
-    { path: "/program", name: "program", component: ProgramView },
-    { path: "/workout", name: "workout", component: WorkoutView },
-    { path: "/dashboard", name: "dashboard", component: DashboardView },
-    { path: "/coach", name: "coach", component: CoachView },
+    { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
+    { path: "/onboarding", name: "onboarding", component: HomeView, meta: { requiresAuth: true, requiresProfile: false } },
+    { path: "/profile", name: "profile", component: HomeView, meta: { requiresAuth: true } },
+    { path: "/recommendation", name: "recommendation", component: RecommendationView, meta: { requiresAuth: true, requiresProfile: true } },
+    { path: "/program", name: "program", component: ProgramView, meta: { requiresAuth: true, requiresProfile: true } },
+    { path: "/workout", name: "workout", component: WorkoutView, meta: { requiresAuth: true, requiresProfile: true } },
+    { path: "/dashboard", name: "dashboard", component: DashboardView, meta: { requiresAuth: true, requiresProfile: true } },
+    { path: "/coach", name: "coach", component: CoachView, meta: { requiresAuth: true, requiresProfile: true } },
   ],
+});
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore(); await auth.initialize();
+  if (!auth.isSupabaseConfigured) return to.name === "login" ? true : { name: "login" };
+  if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: "login" };
+  if (to.meta.guestOnly && auth.isAuthenticated) return { name: auth.hasProfile ? "dashboard" : "onboarding" };
+  if (to.meta.requiresProfile && !auth.hasProfile) return { name: "onboarding" };
+  if (to.meta.requiresProfile === false && auth.hasProfile) return { name: "dashboard" };
+  return true;
 });
 
 export default router;
