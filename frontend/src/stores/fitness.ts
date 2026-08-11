@@ -17,7 +17,10 @@ export interface TrainingProfile {
 export interface WorkoutExercise { exercise_id: string; exercise_name: string; sets: number; reps: number; rest_seconds: number; notes: string }
 export interface WorkoutDay { name: string; focus: string; estimated_duration_minutes: number; exercises: WorkoutExercise[] }
 export interface WorkoutProgram { days: WorkoutDay[] }
-export interface WorkoutLog { id?: string; exercise_name: string; completed_at?: string; sets: number; reps: number; weight: number; }
+export interface WorkoutLog { id?: string; exercise_name: string; completed_at?: string; created_at?: string; sets: number; reps: number; weight: number; }
+export function getWorkoutLogTimestamp(log: WorkoutLog) {
+  return log.completed_at ?? log.created_at ?? null;
+}
 
 interface OnboardingInput {
   name: string; age: number | null; height: number | null; weight: number | null; goal: string; experience: string; equipment: string; injuries: string; training_days: number; session_minutes: number;
