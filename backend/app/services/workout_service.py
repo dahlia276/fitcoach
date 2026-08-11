@@ -5,6 +5,7 @@ def log_workout(workout: dict):
         supabase
         .table("workout_logs")
         .insert(workout)
+        .select("*")
         .execute()
         .data[0]
     )
