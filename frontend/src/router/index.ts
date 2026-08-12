@@ -1,13 +1,14 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
-import RecommendationView from "../views/RecommendationView.vue";
-import ProgramView from "../views/ProgramView.vue";
-import WorkoutView from "../views/WorkoutView.vue";
-import DashboardView from "../views/DashboardView.vue";
-import CoachView from "../views/CoachView.vue";
-import LoginView from "../views/LoginView.vue";
-import ProfileView from "../views/ProfileView.vue";
 import { useAuthStore } from "../stores/auth";
+
+const HomeView = () => import("../views/HomeView.vue");
+const RecommendationView = () => import("../views/RecommendationView.vue");
+const ProgramView = () => import("../views/ProgramView.vue");
+const WorkoutView = () => import("../views/WorkoutView.vue");
+const DashboardView = () => import("../views/DashboardView.vue");
+const CoachView = () => import("../views/CoachView.vue");
+const LoginView = () => import("../views/LoginView.vue");
+const ProfileView = () => import("../views/ProfileView.vue");
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
