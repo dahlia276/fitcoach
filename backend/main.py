@@ -17,6 +17,8 @@ from app.services.user_service import (
     save_training_profile,
 )
 from app.auth import get_current_user_id
+from app.services import coach_memory_service
+from app.services.coach_service import respond as coach_respond
 from app.services.workout_service import (
     get_workouts,
     log_workout,
@@ -48,6 +50,11 @@ class Onboard(BaseModel):
     injuries: str
     training_days: int | None = None
     session_minutes: int | None = None
+
+
+class CoachChatRequest(BaseModel):
+    message: str
+    thread_id: str | None = None
 
 
 @app.get("/")
@@ -144,3 +151,24 @@ def create_log(workout: WorkoutLog, user_id: str = Depends(get_current_user_id))
 @app.get("/logs")
 def logs(user_id: str = Depends(get_current_user_id)):
     return get_workouts(user_id)
+
+
+@app.post("/coach/chat")
+def coach_chat(data: CoachChatRequest, user_id: str = Depends(get_current_user_id)):
+    try:
+        return coach_respond(user_id, data.message, data.thread_id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+
+
+@app.get("/coach/chats")
+def list_coach_chats(user_id: str = Depends(get_current_user_id)):
+    return {"chats": coach_memory_service.list_chats(user_id)}
+
+
+@app.get("/coach/chats/{chat_id}")
+def get_coach_chat(chat_id: str, user_id: str = Depends(get_current_user_id)):
+    try:
+        return {"messages": coach_memory_service.retrieve_chat_messages(user_id, chat_id)}
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
