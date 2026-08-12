@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { RouterLink, RouterView, useRoute } from "vue-router";
+import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "./stores/auth";
 import { Activity, MessageCircle, LayoutDashboard } from "@lucide/vue";
 import "./assets/main.css";
 
 const route = useRoute();
 const showNavigation = computed(() => !["home", "login", "onboarding", "recommendation"].includes(String(route.name)));
+const router = useRouter();
+const auth = useAuthStore();
+
+async function signOut() {
+  try {
+    await auth.signOut();
+  } finally {
+    router.push({ name: "login" });
+  }
+}
 </script>
 
 <template>
@@ -15,6 +26,7 @@ const showNavigation = computed(() => !["home", "login", "onboarding", "recommen
         <RouterLink class="flex items-center gap-2 font-semibold tracking-tight" to="/"><span class="grid size-8 place-items-center rounded-lg bg-blue-600 text-white"><Activity :size="18" /></span>FitCoach</RouterLink>
         <div class="flex items-center gap-1 text-sm font-medium text-slate-500">
           <RouterLink class="nav-link" to="/program">Program</RouterLink><RouterLink class="nav-link" to="/dashboard"><LayoutDashboard :size="16" />Dashboard</RouterLink><RouterLink class="nav-link" to="/coach"><MessageCircle :size="16" />Coach</RouterLink><RouterLink class="nav-link" to="/profile">Profile</RouterLink>
+          <button v-if="auth.isAuthenticated" class="nav-link" @click="signOut" aria-label="Sign out">Sign out</button>
         </div>
       </nav>
     </header>

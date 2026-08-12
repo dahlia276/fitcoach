@@ -78,8 +78,8 @@ Prioritize effective compound movements and balanced exercise selection.
 
     search_kwargs = {
         "query": query,
-        "k": 50,
-        "fetch_k": 80,
+        "k": 25,
+        "fetch_k": 40,
         "lambda_mult": 0.7,
     }
 
@@ -110,6 +110,7 @@ Prioritize effective compound movements and balanced exercise selection.
             f"{d.metadata.get('category')}"
         )
 
+    MAX_CONTENT_CHARS = 1200
     context = "\n\n".join(
         f"""
 Exercise ID: {d.metadata["id"]}
@@ -122,7 +123,7 @@ Force: {d.metadata.get("force", "")}
 Equipment: {d.metadata.get("equipment", "")}
 Level: {d.metadata.get("level", "")}
 
-{d.page_content}
+{d.page_content[:MAX_CONTENT_CHARS]}
 """
         for d in docs
     )
