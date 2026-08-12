@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ArrowRight, Check, Dumbbell, Sparkles } from "@lucide/vue";
 import { useFitnessStore } from "../stores/fitness";
+import { useAuthStore } from "../stores/auth";
 
 const router = useRouter();
 const fitness = useFitnessStore();
+const auth = useAuthStore();
 const error = ref("");
+const DRAFT_KEY = "fitcoach_draft_onboarding";
 
 const form = ref({
   name: "",
@@ -29,6 +32,27 @@ const canSubmit = computed(
     form.value.weight,
 );
 
+function saveDraft() {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(form.value));
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+onMounted(() => {
+  const saved = localStorage.getItem(DRAFT_KEY);
+  if (saved) {
+    try { Object.assign(form.value, JSON.parse(saved)); } catch { /* ignore a corrupted draft */ }
+  }
+});
+
+async function submitProfile() {
+  await fitness.createProfile({ ...form.value, injuries: form.value.injuries || "None" });
+  clearDraft();
+  await router.push({ name: "recommendation" });
+}
+
 const submit = async () => {
   if (!canSubmit.value) {
     error.value = "Please complete your basic details to continue.";
@@ -36,12 +60,55 @@ const submit = async () => {
   }
 
   error.value = "";
+
+  if (!auth.isAuthenticated) {
+    saveDraft();
+    showAuthGate.value = true;
+    return;
+  }
+
   try {
-    await fitness.createProfile({ ...form.value, injuries: form.value.injuries || "None" });
-    await router.push({ name: "recommendation" });
+    await submitProfile();
   } catch {
     error.value = "We couldn't save your profile. Check that the API is running and try again.";
   }
+};
+
+// --- Inline account creation, shown only once the profile form is ready to submit ---
+const showAuthGate = ref(false);
+const authMode = ref<"signup" | "signin">("signup");
+const authEmail = ref("");
+const authPassword = ref("");
+const authNotice = ref("");
+const isAuthSubmitting = ref(false);
+
+const submitAuth = async () => {
+  authNotice.value = "";
+  auth.error = null;
+  isAuthSubmitting.value = true;
+  try {
+    if (authMode.value === "signup") {
+      const hasSession = await auth.signUp(authEmail.value, authPassword.value);
+      if (!hasSession) {
+        authNotice.value = "Account created. Check your email to confirm your address, then come back and sign in — your details are saved.";
+        return;
+      }
+    } else {
+      await auth.signIn(authEmail.value, authPassword.value);
+    }
+    await submitProfile();
+    showAuthGate.value = false;
+  } catch {
+  } finally {
+    isAuthSubmitting.value = false;
+  }
+};
+
+const toggleAuthMode = () => {
+  authMode.value = authMode.value === "signup" ? "signin" : "signup";
+  auth.error = null;
+  authNotice.value = "";
+  authPassword.value = "";
 };
 </script>
 
@@ -96,5 +163,25 @@ const submit = async () => {
         <button class="primary-button w-full" type="submit" :disabled="fitness.isLoading"><span>{{ fitness.isLoading ? "Saving your profile..." : "See my recommendation" }}</span><ArrowRight :size="17" /></button>
       </form>
     </section>
+
+    <div v-if="showAuthGate" class="fixed inset-0 z-30 grid place-items-center bg-slate-900/40 px-4" @click.self="showAuthGate = false">
+      <div class="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-7 shadow-xl">
+        <div class="grid size-11 place-items-center rounded-2xl bg-blue-600 text-white"><Dumbbell :size="20" /></div>
+        <h2 class="mt-5 text-xl font-semibold tracking-tight text-slate-900">{{ authMode === "signup" ? "Create an account to see your plan" : "Sign in to continue" }}</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Your details are saved — this just takes a second.</p>
+
+        <form class="mt-6 space-y-4" @submit.prevent="submitAuth">
+          <label class="field">Email<input v-model.trim="authEmail" type="email" autocomplete="email" required /></label>
+          <label class="field">Password<input v-model="authPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <p v-if="auth.error" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{{ auth.error }}</p>
+          <p v-if="authNotice" class="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ authNotice }}</p>
+          <button class="primary-button w-full" type="submit" :disabled="isAuthSubmitting"><span>{{ isAuthSubmitting ? "Please wait..." : authMode === "signup" ? "Create account & continue" : "Sign in & continue" }}</span><ArrowRight :size="17" /></button>
+        </form>
+
+        <button class="mt-4 w-full text-center text-sm font-medium text-blue-600 hover:text-blue-700" type="button" @click="toggleAuthMode">
+          {{ authMode === "signup" ? "Already have an account? Sign in" : "New here? Create an account" }}
+        </button>
+      </div>
+    </div>
   </main>
 </template>

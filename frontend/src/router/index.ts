@@ -18,7 +18,7 @@ const router = createRouter({
       redirect: "/dashboard",
     },
     { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
-    { path: "/onboarding", name: "onboarding", component: HomeView, meta: { requiresAuth: true, requiresProfile: false } },
+    { path: "/onboarding", name: "onboarding", component: HomeView, meta: { requiresAuth: false, requiresProfile: false } },
     { path: "/profile", name: "profile", component: ProfileView, meta: { requiresAuth: true, requiresProfile: true } },
     { path: "/recommendation", name: "recommendation", component: RecommendationView, meta: { requiresAuth: true, requiresProfile: true } },
     { path: "/program", name: "program", component: ProgramView, meta: { requiresAuth: true, requiresProfile: true } },
