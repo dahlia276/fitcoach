@@ -28,7 +28,6 @@ const router = createRouter({
     { path: "/coach", name: "coach", component: CoachView, meta: { requiresAuth: true, requiresProfile: true } },
   ],
 });
-
 router.beforeEach(async (to) => {
   const auth = useAuthStore(); await auth.initialize();
   if (!auth.isSupabaseConfigured) return to.name === "login" ? true : { name: "login" };

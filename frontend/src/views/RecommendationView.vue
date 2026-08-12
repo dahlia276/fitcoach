@@ -3,10 +3,12 @@ import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { ArrowRight, CalendarDays, Clock3, Dumbbell, Sparkles } from "@lucide/vue";
 import { useFitnessStore } from "../stores/fitness";
+import { useAuthStore } from "../stores/auth";
 
 const router = useRouter();
 const fitness = useFitnessStore();
-const profile = computed(() => fitness.profile);
+const auth = useAuthStore();
+const profile = computed(() => fitness.profile ?? auth.trainingProfile ?? null);
 
 const createProgram = async () => {
   try { await fitness.generateProgram(); await router.push({ name: "program" }); }

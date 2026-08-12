@@ -41,7 +41,6 @@ export const useFitnessStore = defineStore("fitness", () => {
     try {
       const { data } = await api.post<{ training_profile: TrainingProfile }>("/onboard", input);
       profile.value = data.training_profile;
-      useAuthStore().trainingProfile = data.training_profile;
     } finally { isLoading.value = false; }
   }
 
