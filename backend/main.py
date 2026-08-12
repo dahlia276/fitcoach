@@ -2,7 +2,10 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.ai.planner import generate_plan
-from app.ai.retriever import vectorstore
+from app.ai.retriever import (
+    initialize_vectorstore,
+    vectorstore,
+)
 from app.db import supabase
 from app.models.program_request import ProgramRequest
 from app.models.workout import WorkoutLog
@@ -25,6 +28,11 @@ from app.services.workout_service import (
 )
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup():
+
+    initialize_vectorstore()
 
 app.add_middleware(
     CORSMiddleware,
