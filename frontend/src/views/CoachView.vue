@@ -217,7 +217,7 @@ onMounted(() => {
           <PanelLeft :size="18" />
         </button>
         <h2 class="truncate text-sm font-medium text-slate-900">
-          {{ activeChatId ? threads.find((thread) => thread.id === activeChatId)?.title ?? "Chat" : "New chat" }}
+          {{ activeChatId ? threads.find((thread) => thread.id === activeChatId)?.title ?? "Chat" : "Coach chat" }}
         </h2>
       </header>
 
