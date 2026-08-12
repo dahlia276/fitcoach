@@ -172,3 +172,18 @@ def get_coach_chat(chat_id: str, user_id: str = Depends(get_current_user_id)):
         return {"messages": coach_memory_service.retrieve_chat_messages(user_id, chat_id)}
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    
+@app.get("/debug/chroma")
+def debug_chroma():
+    docs = vectorstore.similarity_search("bench press", k=5)
+
+    return {
+        "count": len(docs),
+        "results": [
+            {
+                "id": d.metadata.get("id"),
+                "name": d.metadata.get("name"),
+            }
+            for d in docs
+        ],
+    }

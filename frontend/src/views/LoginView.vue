@@ -32,7 +32,7 @@ const submit = async () => {
     if (isSignUp.value) {
       const hasSession = await auth.signUp(email.value, password.value);
       if (hasSession) await router.push("/onboarding");
-      else notice.value = "Account created. Check your email to confirm your address, then sign in.";
+      else notice.value = "If this email isn't registered, we've sent you a confirmation email. If you already have an account, please sign in.";
       return;
     }
 

@@ -90,7 +90,7 @@ const submitAuth = async () => {
     if (authMode.value === "signup") {
       const hasSession = await auth.signUp(authEmail.value, authPassword.value);
       if (!hasSession) {
-        authNotice.value = "Account created. Check your email to confirm your address, then come back and sign in — your details are saved.";
+        authNotice.value = "Account created. Check your email to confirm your address, then come back and sign in. Your details are saved.";
         return;
       }
     } else {

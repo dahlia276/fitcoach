@@ -87,6 +87,12 @@ Prioritize effective compound movements and balanced exercise selection.
         search_kwargs["filter"] = {"equipment": profile.equipment}
 
     results = vectorstore.max_marginal_relevance_search(**search_kwargs)
+    print("\n" + "=" * 60)
+    print("FITCOACH RETRIEVAL DEBUG")
+    print("=" * 60)
+    print(f"Query:\n{query}")
+    print(f"Equipment filter: {search_kwargs.get('filter')}")
+    print(f"Raw retrieval count: {len(results)}")
 
     seen_ids = set()
     docs = []
@@ -99,6 +105,8 @@ Prioritize effective compound movements and balanced exercise selection.
 
         seen_ids.add(exercise_id)
         docs.append(doc)
+        if not docs:
+            print("⚠️  Chroma returned ZERO exercises.")
 
     print("\nRetrieved exercises:")
     print("=" * 40)
