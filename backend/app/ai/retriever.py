@@ -64,13 +64,13 @@ Instructions
             metadata={
                 "id": exercise["id"],
                 "name": exercise["name"],
-                "equipment": exercise.get("equipment"),
-                "category": exercise.get("category"),
-                "level": exercise.get("level"),
-                "force": exercise.get("force"),
-                "mechanic": exercise.get("mechanic"),
-                "primary_muscles": exercise.get("primary_muscles"),
-                "secondary_muscles": exercise.get("secondary_muscles"),
+                "equipment": exercise.get("equipment") or "",
+                "category": exercise.get("category") or "",
+                "level": exercise.get("level") or "",
+                "force": exercise.get("force") or "",
+                "mechanic": exercise.get("mechanic") or "",
+                "primary_muscles": ", ".join(exercise.get("primary_muscles") or []),
+                "secondary_muscles": ", ".join(exercise.get("secondary_muscles") or []),
             },
         )
 
