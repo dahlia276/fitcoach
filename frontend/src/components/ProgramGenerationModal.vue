@@ -144,7 +144,7 @@ const progress = computed(() => {
           <p
             class="mt-4 text-center text-sm text-slate-400"
           >
-            This usually takes around 10–20 seconds.
+            This usually takes around 20-30 seconds.
           </p>
         </div>
       </div>

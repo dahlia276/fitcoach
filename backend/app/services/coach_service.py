@@ -7,7 +7,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 
-from app.ai.llm import llm
+from app.ai.llm import coach_llm
 from app.services import coach_memory_service as memory
 from app.services import coach_tools
 
@@ -15,6 +15,28 @@ SYSTEM_PROMPT = """You are FitCoach, a practical personal trainer. Answer only w
 Use a tool whenever the answer depends on their profile, current program, history, exercise details, recovery, progress, or a program-block proposal. Do not claim you retrieved information unless a tool returned it.
 For pain or injury: encourage stopping painful movements and appropriate clinical assessment for severe, persistent, sudden, or worsening symptoms. Never diagnose.
 Program changes are proposals unless the user explicitly asks to save one; this chat cannot save plans. Keep advice concise, empathetic, and actionable."""
+
+
+def _extract_text(content: Any) -> str:
+    """Normalize AIMessage.content to plain text.
+
+    The Chat Completions API returns a plain string. The Responses API
+    (used by coach_llm for tool calling + reasoning_effort together) returns
+    a list of content blocks instead - typically a 'reasoning' block (internal,
+    not for display) alongside a 'text' block with the actual answer. Only the
+    text blocks should ever reach the user.
+    """
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+            elif isinstance(block, str):
+                parts.append(block)
+        return "".join(parts).strip()
+    return str(content).strip()
 
 
 def _tool_definitions(user_id: str):
@@ -94,7 +116,7 @@ def respond(user_id: str, message: str, chat_id: str | None = None) -> dict[str,
     ]
     tools = _tool_definitions(user_id)
     tools_by_name = {item.name: item for item in tools}
-    model = llm.bind_tools(tools)
+    model = coach_llm.bind_tools(tools)
     tools_used: list[str] = []
 
     # This is deliberately bounded orchestration, not an unrestricted agent loop.
@@ -102,7 +124,7 @@ def respond(user_id: str, message: str, chat_id: str | None = None) -> dict[str,
         response = model.invoke(messages)
         messages.append(response)
         if not response.tool_calls:
-            answer = str(response.content).strip()
+            answer = _extract_text(response.content)
             break
         for call in response.tool_calls:
             tool_name = call["name"]

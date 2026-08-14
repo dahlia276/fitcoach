@@ -1,4 +1,7 @@
+from time import perf_counter
+
 from langchain_core.prompts import ChatPromptTemplate
+
 from app.ai.llm import llm
 from app.ai.program_validator import ProgramValidator
 from app.ai.prompts import SYSTEM_PROMPT
@@ -43,6 +46,8 @@ Exercise Library
 
 def generate_program(profile: TrainingProfile):
 
+    total_start = perf_counter()
+
     query = f"""
 Build a {profile.recommended_split} workout program.
 
@@ -78,21 +83,25 @@ Prioritize effective compound movements and balanced exercise selection.
 
     search_kwargs = {
         "query": query,
-        "k": 25,
-        "fetch_k": 40,
+        "k": 12,
+        "fetch_k": 20,
         "lambda_mult": 0.7,
     }
 
     if equipment in strict_equipment:
         search_kwargs["filter"] = {"equipment": profile.equipment}
 
+    retrieval_start = perf_counter()
+
     results = vectorstore.max_marginal_relevance_search(**search_kwargs)
+
+    print(f"[Timing] Retrieval: {perf_counter() - retrieval_start:.2f}s")
+
     print("\n" + "=" * 60)
     print("FITCOACH RETRIEVAL DEBUG")
     print("=" * 60)
-    print(f"Query:\n{query}")
     print(f"Equipment filter: {search_kwargs.get('filter')}")
-    print(f"Raw retrieval count: {len(results)}")
+    print(f"Retrieved: {len(results)} exercises")
 
     seen_ids = set()
     docs = []
@@ -105,10 +114,11 @@ Prioritize effective compound movements and balanced exercise selection.
 
         seen_ids.add(exercise_id)
         docs.append(doc)
-        if not docs:
-            print("⚠️  Chroma returned ZERO exercises.")
 
-    print("\nRetrieved exercises:")
+    if not docs:
+        print("⚠️ Chroma returned ZERO exercises.")
+
+    print("\nRetrieved exercises")
     print("=" * 40)
 
     for d in docs:
@@ -118,23 +128,22 @@ Prioritize effective compound movements and balanced exercise selection.
             f"{d.metadata.get('category')}"
         )
 
-    MAX_CONTENT_CHARS = 1200
+    context_start = perf_counter()
+
     context = "\n\n".join(
         f"""
 Exercise ID: {d.metadata["id"]}
 Exercise Name: {d.metadata["name"]}
 Primary Muscles: {d.metadata.get("primary_muscles", "")}
-Secondary Muscles: {d.metadata.get("secondary_muscles", "")}
-Category: {d.metadata.get("category", "")}
-Mechanic: {d.metadata.get("mechanic", "")}
-Force: {d.metadata.get("force", "")}
 Equipment: {d.metadata.get("equipment", "")}
-Level: {d.metadata.get("level", "")}
 
-{d.page_content[:MAX_CONTENT_CHARS]}
+Exercise Summary:
+{d.page_content[:250]}
 """
         for d in docs
     )
+
+    print(f"[Timing] Context build: {perf_counter() - context_start:.2f}s")
 
     messages = prompt.invoke(
         {
@@ -147,6 +156,18 @@ Level: {d.metadata.get("level", "")}
         }
     )
 
+    llm_start = perf_counter()
+
     program = planner.invoke(messages)
+
+    print(f"[Timing] LLM: {perf_counter() - llm_start:.2f}s")
+
+    validation_start = perf_counter()
+
     program = validator.validate(program, profile)
+
+    print(f"[Timing] Validation: {perf_counter() - validation_start:.2f}s")
+
+    print(f"[Timing] Total: {perf_counter() - total_start:.2f}s")
+
     return program.model_dump()
