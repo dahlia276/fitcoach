@@ -50,6 +50,10 @@ onMounted(() => {
 async function submitProfile() {
   await fitness.createProfile({ ...form.value, injuries: form.value.injuries || "None" });
   clearDraft();
+  // The router guard checks auth.trainingProfile, which createProfile() doesn't
+  // update - without this refresh it's still null here, so the guard bounces
+  // the push below straight back to onboarding.
+  await auth.loadAccount();
   await router.push({ name: "recommendation" });
 }
 
