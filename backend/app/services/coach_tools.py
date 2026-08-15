@@ -6,8 +6,9 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
+from app.ai.chains.workout_chain import modify_program as _modify_program
 from app.ai.retriever import vectorstore
-from app.services.user_service import get_latest_plan, get_training_profile, get_user
+from app.services.user_service import get_latest_plan, get_training_profile, get_user, save_plan
 from app.services.workout_service import get_workouts
 
 
@@ -82,6 +83,34 @@ def summarize_progress(user_id: str) -> str:
         "change_in_logged_sets": sum(int(log.get("sets") or 0) for log in current) - sum(int(log.get("sets") or 0) for log in previous),
         "unique_exercises_current_period": len({log.get("exercise_name") for log in current}),
     })
+
+
+def modify_training_program(user_id: str, instructions: str) -> str:
+    """Edit and persist a change to the user's current saved program.
+
+    Unlike generate_next_program_block (a proposal only, never saved), this
+    actually overwrites what's returned by retrieve_current_program going
+    forward. save_plan inserts a new row rather than updating in place, so
+    the prior version isn't destroyed - get_latest_plan just starts
+    returning the newer one.
+    """
+    profile = get_training_profile(user_id)
+    if not profile:
+        return _json({
+            "success": False,
+            "reason": "No training profile exists yet. The user needs to complete onboarding before a program can be created or modified.",
+        })
+
+    current = get_latest_plan(user_id)
+    if not current or not current.get("plan"):
+        return _json({
+            "success": False,
+            "reason": "No current program exists to modify. The user needs to generate a program first.",
+        })
+
+    updated_plan = _modify_program(profile, current["plan"], instructions)
+    save_plan(user_id, updated_plan)
+    return _json({"success": True, "updated_plan": updated_plan})
 
 
 def generate_next_program_block(user_id: str) -> str:

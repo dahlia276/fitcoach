@@ -1,7 +1,6 @@
 from time import perf_counter
-
+import json
 from langchain_core.prompts import ChatPromptTemplate
-
 from app.ai.llm import llm
 from app.ai.program_validator import ProgramValidator
 from app.ai.prompts import SYSTEM_PROMPT
@@ -11,6 +10,19 @@ from app.models.workout_program import WorkoutProgram
 
 planner = llm.with_structured_output(WorkoutProgram)
 validator = ProgramValidator()
+
+STRICT_EQUIPMENT = {
+    "barbell",
+    "dumbbell",
+    "kettlebell",
+    "cable",
+    "machine",
+    "bands",
+    "medicine ball",
+    "exercise ball",
+    "ez curl bar",
+    "body only",
+}
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -68,18 +80,7 @@ Prioritize effective compound movements and balanced exercise selection.
 
     equipment = (profile.equipment or "").strip().lower()
 
-    strict_equipment = {
-        "barbell",
-        "dumbbell",
-        "kettlebell",
-        "cable",
-        "machine",
-        "bands",
-        "medicine ball",
-        "exercise ball",
-        "ez curl bar",
-        "body only",
-    }
+    strict_equipment = STRICT_EQUIPMENT
 
     search_kwargs = {
         "query": query,
@@ -169,5 +170,126 @@ Exercise Summary:
     print(f"[Timing] Validation: {perf_counter() - validation_start:.2f}s")
 
     print(f"[Timing] Total: {perf_counter() - total_start:.2f}s")
+
+    return program.model_dump()
+
+
+MODIFY_SYSTEM_PROMPT = SYSTEM_PROMPT + """
+
+You are now MODIFYING an existing saved program based on a specific user request - not creating one from scratch.
+
+Modification Rules
+
+- Preserve every day and exercise that the request doesn't affect. Do not regenerate the whole program from first principles.
+- Change only what the request requires.
+- Any new or replacement exercise MUST use an exact exercise_id from the provided Exercise Library below - never invent one.
+- If the request adds or removes a day, keep the remaining days internally consistent (balanced muscle groups, no unintentional duplicates).
+- If the request is vague (e.g. "make it harder"), make a reasonable, conservative interpretation and note what you changed in the notes field of the affected exercises.
+- Return the COMPLETE updated program, including the unchanged days, not just the edited parts.
+"""
+
+modify_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", MODIFY_SYSTEM_PROMPT),
+        (
+            "human",
+            """
+Current Program (JSON)
+{current_program}
+
+Requested Change
+{instructions}
+
+Training Profile
+
+Goal:
+{goal}
+
+Equipment:
+{equipment}
+
+Injuries:
+{injuries}
+
+Exercise Library (use for any new or replacement exercises)
+
+{context}
+""",
+        ),
+    ]
+)
+
+
+def modify_program(profile: TrainingProfile, current_plan: dict, instructions: str) -> dict:
+    """Edit an existing saved program based on a natural-language instruction.
+
+    Reuses the same retrieval -> structured-output -> validation pipeline as
+    generate_program, so any new/replacement exercises are grounded in the
+    real exercise library rather than invented, and pass the same duplicate/
+    duration checks a freshly generated program does.
+    """
+
+    query = f"""
+{instructions}
+
+Training goal:
+{profile.goal}
+
+Available equipment:
+{profile.equipment}
+
+Avoid exercises unsuitable for:
+{profile.injuries}
+"""
+
+    equipment = (profile.equipment or "").strip().lower()
+
+    search_kwargs = {
+        "query": query,
+        "k": 12,
+        "fetch_k": 20,
+        "lambda_mult": 0.7,
+    }
+
+    if equipment in STRICT_EQUIPMENT:
+        search_kwargs["filter"] = {"equipment": profile.equipment}
+
+    results = vectorstore.max_marginal_relevance_search(**search_kwargs)
+
+    seen_ids = set()
+    docs = []
+    for doc in results:
+        exercise_id = doc.metadata["id"]
+        if exercise_id in seen_ids:
+            continue
+        seen_ids.add(exercise_id)
+        docs.append(doc)
+
+    context = "\n\n".join(
+        f"""
+Exercise ID: {d.metadata["id"]}
+Exercise Name: {d.metadata["name"]}
+Primary Muscles: {d.metadata.get("primary_muscles", "")}
+Equipment: {d.metadata.get("equipment", "")}
+
+Exercise Summary:
+{d.page_content[:250]}
+"""
+        for d in docs
+    )
+
+    messages = modify_prompt.invoke(
+        {
+            "current_program": json.dumps(current_plan),
+            "instructions": instructions,
+            "goal": profile.goal,
+            "equipment": profile.equipment,
+            "injuries": profile.injuries,
+            "context": context,
+        }
+    )
+
+    program = planner.invoke(messages)
+    program = validator.validate(program, profile)
 
     return program.model_dump()

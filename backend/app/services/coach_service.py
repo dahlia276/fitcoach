@@ -14,7 +14,7 @@ from app.services import coach_tools
 SYSTEM_PROMPT = """You are FitCoach, a practical personal trainer. Answer only with the information needed to help the user.
 Use a tool whenever the answer depends on their profile, current program, history, exercise details, recovery, progress, or a program-block proposal. Do not claim you retrieved information unless a tool returned it.
 For pain or injury: encourage stopping painful movements and appropriate clinical assessment for severe, persistent, sudden, or worsening symptoms. Never diagnose.
-Program changes are proposals unless the user explicitly asks to save one; this chat cannot save plans. Keep advice concise, empathetic, and actionable."""
+You can modify and save changes to the user's saved program with modify_training_program - but only when they explicitly ask for a change to be made (e.g. "swap squats for something else", "add a fourth day", "reduce the volume on leg day"). Do not call it for hypothetical or exploratory questions ("what if I added a fourth day?", "could you reduce leg volume?") - answer those in words first and only act if the user then confirms. After a successful call, briefly confirm what actually changed. Keep advice concise, empathetic, and actionable."""
 
 
 def _extract_text(content: Any) -> str:
@@ -90,10 +90,16 @@ def _tool_definitions(user_id: str):
         """Create a deterministic, unsaved next-block progression proposal from the active program."""
         return coach_tools.generate_next_program_block(user_id)
 
+    @tool
+    def modify_training_program(instructions: str) -> str:
+        """Edit and SAVE a change to the user's current program - e.g. swap an exercise, adjust sets/reps/volume, add or remove a training day. Only call this when the user has explicitly asked for the change to actually be made, not for hypothetical 'what if' questions. This overwrites what retrieve_current_program returns going forward."""
+        return coach_tools.modify_training_program(user_id, instructions)
+
     return [
         retrieve_training_profile, retrieve_current_program, retrieve_workout_history,
         search_exercise_library, suggest_exercise_substitutions, explain_exercise,
         calculate_weekly_volume, calculate_recovery, summarize_progress, generate_next_program_block,
+        modify_training_program,
     ]
 
 
