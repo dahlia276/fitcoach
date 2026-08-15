@@ -10,7 +10,7 @@ from app.db import supabase
 from app.models.program_request import ProgramRequest
 from app.models.workout import WorkoutLog
 from app.services.assessment_service import build_training_profile
-from app.services.exercise_service import load_exercises
+from app.services.exercise_service import get_exercise_library, load_exercises
 from app.services.user_service import (
     create_user,
     get_latest_plan,
@@ -137,6 +137,12 @@ def get_plan(user_id: str = Depends(get_current_user_id)):
 @app.get("/exercises")
 def exercises():
     return load_exercises()
+
+
+@app.get("/exercises/library")
+def exercise_library(ids: str):
+    id_list = [i.strip() for i in ids.split(",") if i.strip()]
+    return get_exercise_library(id_list)
 
 
 @app.get("/search")
