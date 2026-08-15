@@ -9,3 +9,4 @@ class WorkoutLog(BaseModel):
     weight: float
     rpe: float
     notes: str = ""
+    completed_at: str | None = None

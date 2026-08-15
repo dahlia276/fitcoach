@@ -74,6 +74,7 @@ export const useFitnessStore = defineStore("fitness", () => {
         weight: 0,
         rpe: 0,
         notes: exercise.notes,
+        completed_at: new Date().toISOString(),
       })));
       await loadAccountData();
     } finally { isSavingWorkout.value = false; }
