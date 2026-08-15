@@ -17,9 +17,15 @@ export interface TrainingProfile {
 export interface WorkoutExercise { exercise_id: string; exercise_name: string; sets: number; reps: number; rest_seconds: number; notes: string }
 export interface WorkoutDay { name: string; focus: string; estimated_duration_minutes: number; exercises: WorkoutExercise[] }
 export interface WorkoutProgram { days: WorkoutDay[] }
-export interface WorkoutLog { id?: string; exercise_name: string; completed_at?: string; created_at?: string; sets: number; reps: number; weight: number; }
+export interface WorkoutLog { id?: string; exercise_id?: string; exercise_name: string; completed_at?: string; created_at?: string; sets: number; reps: number; weight: number; }
 export function getWorkoutLogTimestamp(log: WorkoutLog) {
   return log.completed_at ?? log.created_at ?? null;
+}
+
+const DAY_PREFIX = /^day\s*\d+\s*[:\-–—]?\s*/i;
+export function cleanDayName(name: string) {
+  const stripped = name.replace(DAY_PREFIX, "").trim();
+  return stripped || name;
 }
 
 interface OnboardingInput {
@@ -35,6 +41,41 @@ export const useFitnessStore = defineStore("fitness", () => {
   const workoutHistory = ref<WorkoutLog[]>([]);
   const isSavingWorkout = ref(false);
   const currentWorkout = computed(() => program.value?.days[activeDay.value] ?? null);
+
+  // Finds the program day whose exercises best match the most recently
+  // logged session, then advances to the following day - so "next workout"
+  // actually rotates through the split instead of always pointing at day 1.
+  const nextDayIndex = computed(() => {
+    const days = program.value?.days;
+    if (!days?.length) return 0;
+
+    const sortedLogs = [...workoutHistory.value]
+      .filter((log) => getWorkoutLogTimestamp(log))
+      .sort((left, right) => new Date(getWorkoutLogTimestamp(right)!).getTime() - new Date(getWorkoutLogTimestamp(left)!).getTime());
+
+    const lastLog = sortedLogs[0];
+    if (!lastLog) return 0;
+
+    const lastSessionDate = new Date(getWorkoutLogTimestamp(lastLog)!).toDateString();
+    const lastSessionExerciseIds = new Set(
+      sortedLogs
+        .filter((log) => new Date(getWorkoutLogTimestamp(log)!).toDateString() === lastSessionDate)
+        .map((log) => log.exercise_id ?? log.exercise_name)
+    );
+
+    let lastDayIndex = -1;
+    let bestOverlap = 0;
+    days.forEach((day, index) => {
+      const overlap = day.exercises.filter((exercise) => lastSessionExerciseIds.has(exercise.exercise_id) || lastSessionExerciseIds.has(exercise.exercise_name)).length;
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        lastDayIndex = index;
+      }
+    });
+
+    if (lastDayIndex === -1) return 0;
+    return (lastDayIndex + 1) % days.length;
+  });
 
   async function createProfile(input: OnboardingInput) {
     isLoading.value = true;
@@ -83,5 +124,5 @@ export const useFitnessStore = defineStore("fitness", () => {
   function selectDay(index: number) { activeDay.value = index; completedExerciseIds.value = []; }
   function toggleExercise(id: string) { completedExerciseIds.value = completedExerciseIds.value.includes(id) ? completedExerciseIds.value.filter((item) => item !== id) : [...completedExerciseIds.value, id]; }
 
-  return { profile, program, isLoading, activeDay, completedExerciseIds, workoutHistory, isSavingWorkout, currentWorkout, createProfile, generateProgram, loadAccountData, completeWorkout, selectDay, toggleExercise };
+  return { profile, program, isLoading, activeDay, completedExerciseIds, workoutHistory, isSavingWorkout, currentWorkout, nextDayIndex, createProfile, generateProgram, loadAccountData, completeWorkout, selectDay, toggleExercise };
 });

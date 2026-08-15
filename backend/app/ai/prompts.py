@@ -20,6 +20,7 @@ Rules
 - Respect available equipment.
 - Balance all major muscle groups over the week.
 - Avoid duplicate exercises unless there is a coaching reason.
+- Set each day's `name` to a short session label only (e.g. "Push", "Pull", "Legs", "Upper Body", "Full Body A"). Never include "Day 1", "Day 2", etc. in `name` - the app numbers days on its own.
 
 Workout Rules
 
