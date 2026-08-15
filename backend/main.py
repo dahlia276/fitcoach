@@ -116,7 +116,7 @@ def generate_program(user_id: str = Depends(get_current_user_id)):
     profile = get_training_profile(user_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Complete onboarding before generating a program.")
-    program = generate_plan(profile)
+    program = generate_plan(profile, user_id=user_id)
     save_plan(user_id, program)
     return {
         "program": program,

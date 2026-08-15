@@ -22,6 +22,11 @@ Rules
 - Avoid duplicate exercises unless there is a coaching reason.
 - Set each day's `name` to a short session label only (e.g. "Push", "Pull", "Legs", "Upper Body", "Full Body A"). Never include "Day 1", "Day 2", etc. in `name` - the app numbers days on its own.
 
+Progressive Overload
+
+- If a Previous Program is provided below (not "None"), treat it as the prior version of this same plan. Where a movement pattern repeats, make it modestly more demanding than last time (more reps, an added set, or a note to increase load) unless the goal, equipment, or injuries changed enough to justify holding steady or backing off.
+- Never just repeat the previous program's exact prescription program after program with no reasoning.
+
 Workout Rules
 
 Each workout MUST contain between 5 and 8 exercises.

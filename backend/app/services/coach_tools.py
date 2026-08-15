@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.ai.chains.workout_chain import modify_program as _modify_program
 from app.ai.retriever import vectorstore
-from app.services.user_service import get_latest_plan, get_training_profile, get_user, save_plan
+from app.services.user_service import get_latest_plan, get_plan_history, get_training_profile, get_user, save_plan
 from app.services.workout_service import get_workouts
 
 
@@ -30,6 +30,14 @@ def retrieve_workout_history(user_id: str, days: int = 28) -> str:
     logs = get_workouts(user_id)
     recent = [log for log in logs if _logged_at(log) >= cutoff]
     return _json(recent)
+
+
+def retrieve_program_history(user_id: str, limit: int = 5) -> str:
+    """Previously saved programs (most recent first), distinct from
+    retrieve_workout_history which returns individual logged sets/reps -
+    this returns whole plan versions, for comparing structure and load
+    across time (progressive overload, "what did I do last month")."""
+    return _json(get_plan_history(user_id, limit=max(1, min(limit, 20))))
 
 
 def search_exercises(query: str, limit: int = 5) -> str:
@@ -108,22 +116,47 @@ def modify_training_program(user_id: str, instructions: str) -> str:
             "reason": "No current program exists to modify. The user needs to generate a program first.",
         })
 
-    updated_plan = _modify_program(profile, current["plan"], instructions)
+    updated_plan = _modify_program(profile, current["plan"], instructions, user_id=user_id)
     save_plan(user_id, updated_plan)
     return _json({"success": True, "updated_plan": updated_plan})
 
 
 def generate_next_program_block(user_id: str) -> str:
-    """A deterministic, non-persisted progression proposal; it never mutates a plan."""
+    """A deterministic, non-persisted progression proposal; it never mutates a plan.
+
+    Only progresses exercises the user actually logged completing all
+    prescribed sets for in the last 28 days - blindly adding a rep to
+    everything regardless of real performance isn't genuine progressive
+    overload.
+    """
     current = get_latest_plan(user_id)
     if not current or not current.get("plan"):
         return _json({"proposal": None, "reason": "No current program exists."})
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=28)
+    logs_by_exercise: dict[str, list[dict]] = defaultdict(list)
+    for log in get_workouts(user_id):
+        if _logged_at(log) >= cutoff:
+            logs_by_exercise[log.get("exercise_name", "")].append(log)
+
     proposal = current["plan"].copy()
     for day in proposal.get("days", []):
         for exercise in day.get("exercises", []):
-            exercise["reps"] = int(exercise["reps"]) + 1
-            exercise["notes"] = f"{exercise.get('notes', '').strip()} Progression: add one rep if all prescribed reps were completed.".strip()
-    return _json({"proposal": proposal, "rule": "Each exercise receives one additional prescribed rep; no plan was saved."})
+            entries = logs_by_exercise.get(exercise["exercise_name"], [])
+            note = exercise.get("notes", "").strip()
+            if not entries:
+                exercise["notes"] = f"{note} No recent logs found - repeat the current prescription and log this session to enable progression.".strip()
+                continue
+            completed_all_sets = any(int(entry.get("sets") or 0) >= exercise["sets"] for entry in entries)
+            if completed_all_sets:
+                exercise["reps"] = int(exercise["reps"]) + 1
+                exercise["notes"] = f"{note} Progression: +1 rep - all prescribed sets were completed last time.".strip()
+            else:
+                exercise["notes"] = f"{note} Hold at the current reps - fewer sets were logged than prescribed last time.".strip()
+    return _json({
+        "proposal": proposal,
+        "rule": "Reps increase only for exercises with a logged session in the last 28 days that completed all prescribed sets; others hold steady or wait for a logged session.",
+    })
 
 
 def _logged_at(log: dict) -> datetime:

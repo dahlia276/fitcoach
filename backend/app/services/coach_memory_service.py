@@ -175,6 +175,25 @@ def retrieve_relevant_memories(user_id: str, query: str, limit: int = 8) -> list
     return (relevant or ranked)[:limit]
 
 
+def retrieve_injury_notes(user_id: str, limit: int = 5) -> list[str]:
+    """Explicit injury/pain mentions captured from chat (see extract_durable_memories).
+
+    Used outside Coach Chat too - e.g. by program generation/modification -
+    so a limitation mentioned mid-chat still constrains the workout even if
+    the user never went back and edited their profile's injuries field.
+    """
+    result = (
+        supabase.table("coach_memories")
+        .select("content, updated_at")
+        .eq("user_id", user_id)
+        .eq("category", "injury_feedback")
+        .order("updated_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [row["content"] for row in (result.data or [])]
+
+
 def resolve_thread_id(user_id: str, chat_id: str | None) -> str | None:
     if chat_id is None:
         return None

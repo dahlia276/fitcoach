@@ -71,3 +71,17 @@ def get_latest_plan(user_id):
         .order("created_at", desc=True).limit(1).execute()
     )
     return result.data[0] if result.data else None
+
+
+def get_plan_history(user_id, limit: int = 10):
+    """All previously saved plans, most recent first.
+
+    save_plan() always inserts rather than updates, so every generation and
+    every chat-driven modification leaves its own row here - this is what
+    lets program generation reference prior versions for progressive overload.
+    """
+    result = (
+        supabase.table("workout_plans").select("plan, created_at").eq("user_id", user_id)
+        .order("created_at", desc=True).limit(limit).execute()
+    )
+    return result.data or []

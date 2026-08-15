@@ -12,7 +12,7 @@ from app.services import coach_memory_service as memory
 from app.services import coach_tools
 
 SYSTEM_PROMPT = """You are FitCoach, a practical personal trainer. Answer only with the information needed to help the user.
-Use a tool whenever the answer depends on their profile, current program, history, exercise details, recovery, progress, or a program-block proposal. Do not claim you retrieved information unless a tool returned it.
+Use a tool whenever the answer depends on their profile, current program, logged workout history, past program versions, exercise details, recovery, progress, or a program-block proposal. Do not claim you retrieved information unless a tool returned it.
 For pain or injury: encourage stopping painful movements and appropriate clinical assessment for severe, persistent, sudden, or worsening symptoms. Never diagnose.
 You can modify and save changes to the user's saved program with modify_training_program - but only when they explicitly ask for a change to be made (e.g. "swap squats for something else", "add a fourth day", "reduce the volume on leg day"). Do not call it for hypothetical or exploratory questions ("what if I added a fourth day?", "could you reduce leg volume?") - answer those in words first and only act if the user then confirms. After a successful call, briefly confirm what actually changed. Keep advice concise, empathetic, and actionable."""
 
@@ -52,8 +52,13 @@ def _tool_definitions(user_id: str):
 
     @tool
     def retrieve_workout_history(days: int = 28) -> str:
-        """Get completed workout entries from the requested number of days."""
+        """Get completed workout entries (individual logged sets/reps/weight) from the requested number of days."""
         return coach_tools.retrieve_workout_history(user_id, days)
+
+    @tool
+    def retrieve_program_history(limit: int = 5) -> str:
+        """Get the user's previously saved whole programs, most recent first - distinct from retrieve_workout_history's individual logged sets. Use this to compare structure and load across program versions, e.g. for progressive overload or 'what did my program look like last month'."""
+        return coach_tools.retrieve_program_history(user_id, limit)
 
     @tool
     def search_exercise_library(query: str, limit: int = 5) -> str:
@@ -96,7 +101,7 @@ def _tool_definitions(user_id: str):
         return coach_tools.modify_training_program(user_id, instructions)
 
     return [
-        retrieve_training_profile, retrieve_current_program, retrieve_workout_history,
+        retrieve_training_profile, retrieve_current_program, retrieve_workout_history, retrieve_program_history,
         search_exercise_library, suggest_exercise_substitutions, explain_exercise,
         calculate_weekly_volume, calculate_recovery, summarize_progress, generate_next_program_block,
         modify_training_program,

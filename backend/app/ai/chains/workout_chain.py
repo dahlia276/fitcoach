@@ -7,6 +7,8 @@ from app.ai.prompts import SYSTEM_PROMPT
 from app.ai.retriever import vectorstore
 from app.models.training_profile import TrainingProfile
 from app.models.workout_program import WorkoutProgram
+from app.services import coach_memory_service
+from app.services.user_service import get_plan_history
 
 planner = llm.with_structured_output(WorkoutProgram)
 validator = ProgramValidator()
@@ -56,6 +58,48 @@ def _build_metadata_filter(profile: TrainingProfile) -> dict | None:
         return conditions[0]
     return {"$and": conditions}
 
+
+def _effective_injuries(profile: TrainingProfile, user_id: str | None) -> str:
+    """Merges the profile's injuries field with any injury/pain mentions
+    captured from chat, so a limitation raised mid-conversation constrains
+    generation/modification even if the user never went back and edited
+    their profile."""
+
+    base = (profile.injuries or "").strip()
+    if not user_id:
+        return base
+
+    chat_notes = coach_memory_service.retrieve_injury_notes(user_id)
+    if not chat_notes:
+        return base
+
+    notes = "; ".join(chat_notes)
+    if base:
+        return f"{base}\nAlso mentioned in chat: {notes}"
+    return f"Mentioned in chat: {notes}"
+
+
+def _previous_program_summary(user_id: str | None) -> str:
+    """A compact summary of the user's most recently saved program, so a
+    freshly generated program can apply progressive overload instead of
+    starting from scratch every time."""
+
+    if not user_id:
+        return "None - this is the user's first program."
+
+    history = get_plan_history(user_id, limit=1)
+    if not history:
+        return "None - this is the user's first program."
+
+    lines = []
+    for day in history[0]["plan"].get("days", []):
+        exercises = ", ".join(
+            f"{exercise['exercise_name']} {exercise['sets']}x{exercise['reps']}"
+            for exercise in day.get("exercises", [])
+        )
+        lines.append(f"{day.get('name', 'Day')}: {exercises}")
+    return "\n".join(lines)
+
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_PROMPT),
@@ -79,6 +123,9 @@ Equipment:
 Injuries:
 {injuries}
 
+Previous Program (for progressive overload reference)
+{previous_program}
+
 Exercise Library
 
 {context}
@@ -88,9 +135,12 @@ Exercise Library
 )
 
 
-def generate_program(profile: TrainingProfile):
+def generate_program(profile: TrainingProfile, user_id: str | None = None):
 
     total_start = perf_counter()
+
+    injuries = _effective_injuries(profile, user_id)
+    previous_program = _previous_program_summary(user_id)
 
     query = f"""
 Build a {profile.recommended_split} workout program.
@@ -105,7 +155,7 @@ Available equipment:
 {profile.equipment}
 
 Avoid exercises unsuitable for:
-{profile.injuries}
+{injuries}
 
 Prioritize effective compound movements and balanced exercise selection.
 """
@@ -181,7 +231,8 @@ Exercise Summary:
             "split": profile.recommended_split,
             "training_days": profile.training_days,
             "equipment": profile.equipment,
-            "injuries": profile.injuries,
+            "injuries": injuries,
+            "previous_program": previous_program,
             "context": context,
         }
     )
@@ -249,7 +300,7 @@ Exercise Library (use for any new or replacement exercises)
 )
 
 
-def modify_program(profile: TrainingProfile, current_plan: dict, instructions: str) -> dict:
+def modify_program(profile: TrainingProfile, current_plan: dict, instructions: str, user_id: str | None = None) -> dict:
     """Edit an existing saved program based on a natural-language instruction.
 
     Reuses the same retrieval -> structured-output -> validation pipeline as
@@ -257,6 +308,8 @@ def modify_program(profile: TrainingProfile, current_plan: dict, instructions: s
     real exercise library rather than invented, and pass the same duplicate/
     duration checks a freshly generated program does.
     """
+
+    injuries = _effective_injuries(profile, user_id)
 
     query = f"""
 {instructions}
@@ -268,7 +321,7 @@ Available equipment:
 {profile.equipment}
 
 Avoid exercises unsuitable for:
-{profile.injuries}
+{injuries}
 """
 
     search_kwargs = {
@@ -312,7 +365,7 @@ Exercise Summary:
             "instructions": instructions,
             "goal": profile.goal,
             "equipment": profile.equipment,
-            "injuries": profile.injuries,
+            "injuries": injuries,
             "context": context,
         }
     )
