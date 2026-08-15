@@ -11,9 +11,13 @@ class ProgramValidator:
         self,
         program: WorkoutProgram,
         profile: TrainingProfile,
+        valid_exercise_ids: set[str] | None = None,
     ) -> WorkoutProgram:
         self._remove_duplicate_exercises(program)
         self._validate_session_duration(program, profile)
+
+        if valid_exercise_ids is not None:
+            self._enforce_experience_level(program, valid_exercise_ids)
 
         return program
 
@@ -58,3 +62,31 @@ class ProgramValidator:
                     f"{day.name} exceeds requested duration "
                     f"({estimated} > {requested} min)"
                 )
+
+    def _enforce_experience_level(
+        self,
+        program: WorkoutProgram,
+        valid_exercise_ids: set[str],
+    ) -> None:
+        """
+        Drops any exercise the model picked outside the experience-level-
+        filtered retrieval set, guaranteeing the program only contains
+        exercises that match the user's chosen experience level.
+        """
+
+        for day in program.days:
+            kept = [
+                exercise
+                for exercise in day.exercises
+                if exercise.exercise_id in valid_exercise_ids
+            ]
+
+            dropped = len(day.exercises) - len(kept)
+
+            if dropped:
+                print(
+                    f"[ProgramValidator] Dropped {dropped} exercise(s) from "
+                    f"{day.name} that didn't match the requested experience level."
+                )
+
+            day.exercises = kept

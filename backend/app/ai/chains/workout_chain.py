@@ -24,6 +24,38 @@ STRICT_EQUIPMENT = {
     "body only",
 }
 
+EXPERIENCE_TO_LEVEL = {
+    "beginner": "beginner",
+    "intermediate": "intermediate",
+    "advanced": "expert",
+    "expert": "expert",
+}
+
+
+def _level_for_experience(experience: str) -> str | None:
+    return EXPERIENCE_TO_LEVEL.get((experience or "").strip().lower())
+
+
+def _build_metadata_filter(profile: TrainingProfile) -> dict | None:
+    """Builds the Chroma `where` filter so retrieval only ever returns
+    exercises matching the user's equipment and experience level."""
+
+    conditions = []
+
+    equipment = (profile.equipment or "").strip().lower()
+    if equipment in STRICT_EQUIPMENT:
+        conditions.append({"equipment": profile.equipment})
+
+    level = _level_for_experience(profile.experience)
+    if level:
+        conditions.append({"level": level})
+
+    if not conditions:
+        return None
+    if len(conditions) == 1:
+        return conditions[0]
+    return {"$and": conditions}
+
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_PROMPT),
@@ -78,10 +110,6 @@ Avoid exercises unsuitable for:
 Prioritize effective compound movements and balanced exercise selection.
 """
 
-    equipment = (profile.equipment or "").strip().lower()
-
-    strict_equipment = STRICT_EQUIPMENT
-
     search_kwargs = {
         "query": query,
         "k": 12,
@@ -89,8 +117,9 @@ Prioritize effective compound movements and balanced exercise selection.
         "lambda_mult": 0.7,
     }
 
-    if equipment in strict_equipment:
-        search_kwargs["filter"] = {"equipment": profile.equipment}
+    metadata_filter = _build_metadata_filter(profile)
+    if metadata_filter:
+        search_kwargs["filter"] = metadata_filter
 
     retrieval_start = perf_counter()
 
@@ -165,7 +194,7 @@ Exercise Summary:
 
     validation_start = perf_counter()
 
-    program = validator.validate(program, profile)
+    program = validator.validate(program, profile, valid_exercise_ids=seen_ids)
 
     print(f"[Timing] Validation: {perf_counter() - validation_start:.2f}s")
 
@@ -242,8 +271,6 @@ Avoid exercises unsuitable for:
 {profile.injuries}
 """
 
-    equipment = (profile.equipment or "").strip().lower()
-
     search_kwargs = {
         "query": query,
         "k": 12,
@@ -251,8 +278,9 @@ Avoid exercises unsuitable for:
         "lambda_mult": 0.7,
     }
 
-    if equipment in STRICT_EQUIPMENT:
-        search_kwargs["filter"] = {"equipment": profile.equipment}
+    metadata_filter = _build_metadata_filter(profile)
+    if metadata_filter:
+        search_kwargs["filter"] = metadata_filter
 
     results = vectorstore.max_marginal_relevance_search(**search_kwargs)
 
