@@ -20,7 +20,7 @@ def build_training_profile(user: dict) -> TrainingProfile:
             session_minutes=user.get("session_minutes") or 60,
             recommended_split="Full Body",
             reasoning=(
-                "A 3-day full body split maximizes practice of compound lifts "
+                "A full body split maximizes practice of compound lifts "
                 "while allowing sufficient recovery."
             ),
         )

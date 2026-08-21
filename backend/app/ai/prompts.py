@@ -25,6 +25,7 @@ Rules
 Progressive Overload
 
 - If a Previous Program is provided below (not "None"), treat it as the prior version of this same plan. Where a movement pattern repeats, make it modestly more demanding than last time (more reps, an added set, or a note to increase load) unless the goal, equipment, or injuries changed enough to justify holding steady or backing off.
+- Where the Previous Program shows "actually logged" numbers for an exercise, base progression on those actual numbers rather than the planned ones - they reflect what the user really lifted. A high logged RPE (8-10) at the planned reps means hold the load steady or add reps before adding weight; a low logged RPE (under 7) means it's safe to increase load. If nothing was logged for an exercise, fall back to normal progression from the planned prescription.
 - Never just repeat the previous program's exact prescription program after program with no reasoning.
 
 Workout Rules

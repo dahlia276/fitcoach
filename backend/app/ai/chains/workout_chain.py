@@ -9,6 +9,7 @@ from app.models.training_profile import TrainingProfile
 from app.models.workout_program import WorkoutProgram
 from app.services import coach_memory_service
 from app.services.user_service import get_plan_history
+from app.services.workout_service import get_workouts
 
 planner = llm.with_structured_output(WorkoutProgram)
 validator = ProgramValidator()
@@ -79,10 +80,27 @@ def _effective_injuries(profile: TrainingProfile, user_id: str | None) -> str:
     return f"Mentioned in chat: {notes}"
 
 
+def _latest_logs_by_exercise(user_id: str) -> dict:
+    """Most recent logged weight/reps/RPE per exercise, keyed by exercise_id.
+
+    get_workouts() returns rows ordered most-recent-first, so the first row
+    seen for a given exercise is its latest logged performance.
+    """
+
+    latest = {}
+    for log in get_workouts(user_id):
+        exercise_id = log.get("exercise_id")
+        if not exercise_id or exercise_id in latest:
+            continue
+        latest[exercise_id] = log
+    return latest
+
+
 def _previous_program_summary(user_id: str | None) -> str:
-    """A compact summary of the user's most recently saved program, so a
-    freshly generated program can apply progressive overload instead of
-    starting from scratch every time."""
+    """A compact summary of the user's most recently saved program - including
+    the actual weight/reps/RPE they logged against each exercise, where
+    available - so a freshly generated program can apply progressive overload
+    based on real performance instead of just repeating the planned numbers."""
 
     if not user_id:
         return "None - this is the user's first program."
@@ -91,13 +109,20 @@ def _previous_program_summary(user_id: str | None) -> str:
     if not history:
         return "None - this is the user's first program."
 
+    latest_logs = _latest_logs_by_exercise(user_id)
+
     lines = []
     for day in history[0]["plan"].get("days", []):
-        exercises = ", ".join(
-            f"{exercise['exercise_name']} {exercise['sets']}x{exercise['reps']}"
-            for exercise in day.get("exercises", [])
-        )
-        lines.append(f"{day.get('name', 'Day')}: {exercises}")
+        exercise_parts = []
+        for exercise in day.get("exercises", []):
+            part = f"{exercise['exercise_name']} planned {exercise['sets']}x{exercise['reps']}"
+            log = latest_logs.get(exercise.get("exercise_id"))
+            if log and log.get("weight"):
+                rpe = log.get("rpe")
+                rpe_part = f" @ RPE {rpe}" if rpe else ""
+                part += f" (actually logged {log['sets']}x{log['reps']} @ {log['weight']}lb{rpe_part})"
+            exercise_parts.append(part)
+        lines.append(f"{day.get('name', 'Day')}: {', '.join(exercise_parts)}")
     return "\n".join(lines)
 
 prompt = ChatPromptTemplate.from_messages(

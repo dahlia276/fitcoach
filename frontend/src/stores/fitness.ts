@@ -17,7 +17,8 @@ export interface TrainingProfile {
 export interface WorkoutExercise { exercise_id: string; exercise_name: string; sets: number; reps: number; rest_seconds: number; notes: string }
 export interface WorkoutDay { name: string; focus: string; estimated_duration_minutes: number; exercises: WorkoutExercise[] }
 export interface WorkoutProgram { days: WorkoutDay[] }
-export interface WorkoutLog { id?: string; exercise_id?: string; exercise_name: string; completed_at?: string; created_at?: string; sets: number; reps: number; weight: number; }
+export interface WorkoutLog { id?: string; exercise_id?: string; exercise_name: string; completed_at?: string; created_at?: string; sets: number; reps: number; weight: number; rpe?: number; }
+export interface ExerciseLogEntry { weight: number | null; reps: number; rpe: number | null }
 export function getWorkoutLogTimestamp(log: WorkoutLog) {
   return log.completed_at ?? log.created_at ?? null;
 }
@@ -38,6 +39,7 @@ export const useFitnessStore = defineStore("fitness", () => {
   const isLoading = ref(false);
   const activeDay = ref(0);
   const completedExerciseIds = ref<string[]>([]);
+  const exerciseLogs = ref<Record<string, ExerciseLogEntry>>({});
   const workoutHistory = ref<WorkoutLog[]>([]);
   const isSavingWorkout = ref(false);
   const currentWorkout = computed(() => program.value?.days[activeDay.value] ?? null);
@@ -107,22 +109,45 @@ export const useFitnessStore = defineStore("fitness", () => {
         ? currentWorkout.value.exercises.filter((exercise) => completedExerciseIds.value.includes(exercise.exercise_id))
         : currentWorkout.value.exercises;
 
-      await Promise.all(completedExercises.map((exercise) => api.post("/log", {
-        exercise_id: exercise.exercise_id,
-        exercise_name: exercise.exercise_name,
-        sets: exercise.sets,
-        reps: exercise.reps,
-        weight: 0,
-        rpe: 0,
-        notes: exercise.notes,
-        completed_at: new Date().toISOString(),
-      })));
+      await Promise.all(completedExercises.map((exercise) => {
+        const entry = exerciseLogs.value[exercise.exercise_id];
+        return api.post("/log", {
+          exercise_id: exercise.exercise_id,
+          exercise_name: exercise.exercise_name,
+          sets: exercise.sets,
+          reps: entry?.reps ?? exercise.reps,
+          weight: entry?.weight ?? 0,
+          rpe: entry?.rpe ?? 0,
+          notes: exercise.notes,
+          completed_at: new Date().toISOString(),
+        });
+      }));
       await loadAccountData();
     } finally { isSavingWorkout.value = false; }
   }
 
-  function selectDay(index: number) { activeDay.value = index; completedExerciseIds.value = []; }
+  function selectDay(index: number) {
+    activeDay.value = index;
+    completedExerciseIds.value = [];
+    const day = program.value?.days[index];
+    exerciseLogs.value = Object.fromEntries(
+      (day?.exercises ?? []).map((exercise) => [exercise.exercise_id, { weight: null, reps: exercise.reps, rpe: null }])
+    );
+  }
   function toggleExercise(id: string) { completedExerciseIds.value = completedExerciseIds.value.includes(id) ? completedExerciseIds.value.filter((item) => item !== id) : [...completedExerciseIds.value, id]; }
+  function updateExerciseLog(id: string, patch: Partial<ExerciseLogEntry>) {
+    exerciseLogs.value[id] = { ...exerciseLogs.value[id], ...patch } as ExerciseLogEntry;
+  }
+  // Fills in any exercises missing a log entry (e.g. landing on /workout
+  // directly rather than via selectDay) without disturbing ones already
+  // being edited.
+  function ensureExerciseLogs() {
+    for (const exercise of currentWorkout.value?.exercises ?? []) {
+      if (!exerciseLogs.value[exercise.exercise_id]) {
+        exerciseLogs.value[exercise.exercise_id] = { weight: null, reps: exercise.reps, rpe: null };
+      }
+    }
+  }
 
-  return { profile, program, isLoading, activeDay, completedExerciseIds, workoutHistory, isSavingWorkout, currentWorkout, nextDayIndex, createProfile, generateProgram, loadAccountData, completeWorkout, selectDay, toggleExercise };
+  return { profile, program, isLoading, activeDay, completedExerciseIds, exerciseLogs, workoutHistory, isSavingWorkout, currentWorkout, nextDayIndex, createProfile, generateProgram, loadAccountData, completeWorkout, selectDay, toggleExercise, updateExerciseLog, ensureExerciseLogs };
 });
